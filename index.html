@@ -416,8 +416,17 @@ document.head.appendChild(link);
     </div>
     <hr class="divider">
     <div class="form-grid">
-      <div class="form-group"><label class="form-label">Peso inicial (kg) *</label><input class="form-input" id="f-peso" type="number" placeholder="320"></div>
-      <div class="form-group"><label class="form-label">Precio de compra ($) *</label><input class="form-input" id="f-precio" type="number" placeholder="2800000"></div>
+      <div class="form-group"><label class="form-label">Peso inicial (kg) *</label><input class="form-input" id="f-peso" type="number" placeholder="320" oninput="calcTotalAnimal()"></div>
+      <div class="form-group">
+        <label class="form-label">Precio por kg ($) *</label>
+        <input class="form-input" id="f-precio-kg" type="number" placeholder="Ej: 7.000" min="0" step="100" oninput="calcTotalAnimal()">
+        <p class="form-hint">Precio por kilogramo de compra</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio total de compra</label>
+        <div id="f-precio-total" style="padding:9px 12px;background:var(--verde-pale);border-radius:var(--r-sm);font-size:14px;font-weight:500;color:var(--verde);min-height:38px">Ingresa peso y precio/kg</div>
+        <input type="hidden" id="f-precio" value="0">
+      </div>
     </div>
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Inversionista</label><input class="form-input" id="f-inversor" type="text" placeholder="Nombre del inversionista"></div>
@@ -2081,19 +2090,21 @@ function previewFichaMedia(input, tipo) {
 }
 
 function renderFichaFotos(a) {
-  if (!a.fotos || !a.fotos.length) return '';
-  return '<div class="card"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Fotos y videos (' + a.fotos.length + ')</p>' +
-    '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
-    a.fotos.map(function(f) {
-      var isImg = f.dataUrl && f.dataUrl.startsWith('data:image');
-      return '<div style="position:relative;cursor:pointer" data-fid="' + f.id + '" data-aid="' + a.id + '" onclick="_vFG(this)">' +
-        (isImg
-          ? '<img src="' + f.dataUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--borde)">'
-          : '<video src="' + f.dataUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--borde)" muted></video>') +
-        '<div style="position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.55);color:white;font-size:9px;padding:1px 4px;border-radius:2px">' + (f.tipo||'') + '</div>' +
-      '</div>';
-    }).join('') +
-    '</div></div>';
+  if (!a || !a.fotos || !a.fotos.length) return '';
+  var html = '<div class="card" style="margin-top:14px"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Fotos y videos (' + a.fotos.length + ')</p><div style="display:flex;flex-wrap:wrap;gap:8px">';
+  a.fotos.forEach(function(f) {
+    var isImg = f.dataUrl && f.dataUrl.startsWith('data:image');
+    html += '<div style="position:relative;cursor:pointer" data-fid="' + f.id + '" data-aid="' + a.id + '" onclick="_vFG(this)">';
+    if (isImg) {
+      html += '<img src="' + f.dataUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--borde)">';
+    } else {
+      html += '<video src="' + f.dataUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--borde)" muted></video>';
+    }
+    html += '<div style="position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.55);color:white;font-size:9px;padding:1px 4px;border-radius:2px">' + (f.tipo||'foto') + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+  return html;
 }
 
 function verFotoGrande(fotoId, animalId) {
@@ -2592,7 +2603,8 @@ function driveConectar() {
       if (resp.error) { alert('Error al conectar: ' + resp.error); return; }
       driveToken = resp.access_token;
       localStorage.setItem('gp_drive_token_exp', Date.now() + (resp.expires_in * 1000));
-      driveActualizarUI(true);
+      localStorage.setItem('gp_drive_was_connected', '1');
+  driveActualizarUI(true);
       driveCrearEstructura();
     }
   });
@@ -2814,11 +2826,19 @@ async function driveSyncFotoAnimal(animalId, fotoId) {
 
 // Check drive connection on load
 function driveCheckInit() {
-  var exp = localStorage.getItem('gp_drive_token_exp');
   var savedFolders = localStorage.getItem('gp_drive_folders');
   if (savedFolders) driveFolderIds = JSON.parse(savedFolders);
-  // Token expired or not present - show disconnected
+  // Token lives in memory only (OAuth security) - user must reconnect each session
+  // But we show a helpful reconnect prompt if they were previously connected
+  var wasConnected = localStorage.getItem('gp_drive_was_connected');
   driveActualizarUI(false);
+  if (wasConnected === '1') {
+    var msg = document.getElementById('drive-estado-msg');
+    if (msg) {
+      msg.textContent = 'Sesión anterior detectada. Toca "Conectar" para reconectar Drive.';
+      msg.style.color = 'var(--amber-dark)';
+    }
+  }
 }
 
 // ============ PIN ============
@@ -3864,6 +3884,24 @@ function irAVender(id) {
   setTimeout(function() {
     dvToggleAnimal(id);
   }, 100);
+}
+
+function calcTotalAnimal() {
+  var peso = parseFloat(document.getElementById('f-peso').value) || 0;
+  var precioKg = parseFloat(document.getElementById('f-precio-kg').value) || 0;
+  var total = peso * precioKg;
+  var el = document.getElementById('f-precio-total');
+  var hiddenEl = document.getElementById('f-precio');
+  if (el) {
+    if (peso > 0 && precioKg > 0) {
+      el.textContent = fmtKg(peso) + ' × ' + fmt$(precioKg) + '/kg = ' + fmt$(total);
+      el.style.color = 'var(--verde)';
+    } else {
+      el.textContent = 'Ingresa peso y precio/kg';
+      el.style.color = 'var(--texto-light)';
+    }
+  }
+  if (hiddenEl) hiddenEl.value = total;
 }
 
 // ============ INIT ============
