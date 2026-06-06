@@ -1289,198 +1289,166 @@ function guardarAnimal() {
 
 // ============ FICHA ============
 function renderFicha(id) {
-  const a = DB.animales.find(x => x.id === id);
+  var a = DB.animales.find(function(x){ return x.id === id; });
   if (!a) return;
-  const p = periodoActual(a);
-  const pesoAct = ultimoPeso(a);
-  const ganancia = pesoAct - p.basePeso;
-  const nPeriodo = p.num;
-  const madre = a.madre ? DB.animales.find(x => x.chapeta === a.madre) : null;
-  const crias = DB.animales.filter(x => x.madre === a.chapeta);
-  const periodos = a.periodos || [];
+  var p = periodoActual(a);
+  var pesoAct = ultimoPeso(a);
+  var ganancia = pesoAct - p.basePeso;
+  var nPeriodo = p.num;
+  var madre = a.madre ? DB.animales.find(function(x){ return x.chapeta === a.madre; }) : null;
+  var crias = DB.animales.filter(function(x){ return x.madre === a.chapeta; });
+  var periodos = a.periodos || [];
 
   // Build evolution timeline
-  // Each closed period + current open period
-  const allPeriodos = [];
-
-  // Closed periods
-  periodos.forEach((pc, i) => {
+  var allPeriodos = [];
+  periodos.forEach(function(pc, i) {
     allPeriodos.push({
-      num: i + 1,
-      tipo: 'cerrado',
+      num: i+1, tipo:'cerrado',
       baseInversion: pc.baseInversionPeriodo,
-      basePeso: i === 0 ? a.pesoInicial : periodos[i-1].pesoCorte,
-      pesoFin: pc.pesoCorte,
-      valorFin: pc.valorCorte,
-      utilidad: pc.utilidadTotal,
-      utilSocio: pc.utilidadSocio,
-      utilInversor: pc.utilidadInversor,
-      fechaFin: pc.fechaCorte,
-      pct: a.pctInversor || 50,
-      formaPago: pc.socioFormaPago || pc.formaPago || 'efectivo',
+      basePeso: i===0 ? a.pesoInicial : periodos[i-1].pesoCorte,
+      pesoFin: pc.pesoCorte, valorFin: pc.valorCorte,
+      utilidad: pc.utilidadTotal, utilSocio: pc.utilidadSocio,
+      utilInversor: pc.utilidadInversor, fechaFin: pc.fechaCorte,
+      pct: a.pctInversor||50, formaPago: pc.socioFormaPago||pc.formaPago||'efectivo',
       nuevaBase: pc.valorCorte
     });
   });
-
-  // Current open period
   allPeriodos.push({
-    num: nPeriodo,
-    tipo: 'activo',
-    baseInversion: p.baseInversion,
-    basePeso: p.basePeso,
-    pesoAct: pesoAct,
-    ganancia: ganancia,
-    pct: a.pctInversor || 50
+    num: nPeriodo, tipo:'activo',
+    baseInversion: p.baseInversion, basePeso: p.basePeso,
+    pesoAct: pesoAct, ganancia: ganancia, pct: a.pctInversor||50
   });
 
-  // Render evolution cards
-  const evolucionHtml = allPeriodos.map(per => {
+  var evolucionHtml = allPeriodos.map(function(per) {
     if (per.tipo === 'cerrado') {
-      const pctSocio = 100 - per.pct;
-      const colorUtil = per.utilidad >= 0 ? 'var(--verde)' : 'var(--rojo)';
-      return `
-        <div style="border:1px solid var(--borde);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
-          <div style="background:var(--crema-dark);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;font-weight:500">Período ${per.num} <span style="background:#D8F3DC;color:#2D6A4F;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">Cerrado</span></span>
-            <span style="font-size:12px;color:var(--texto-light)">${per.fechaFin}</span>
-          </div>
-          <div style="padding:12px 14px">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">
-              <div style="background:var(--crema);border-radius:var(--r-sm);padding:10px">
-                <div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Punto de partida</div>
-                <div style="font-size:15px;font-family:'Playfair Display',serif">${fmt$(per.baseInversion)}</div>
-                <div style="font-size:11px;color:var(--texto-light)">${fmtKg(per.basePeso)}</div>
-              </div>
-              <div style="background:var(--crema);border-radius:var(--r-sm);padding:10px">
-                <div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Valor al cierre</div>
-                <div style="font-size:15px;font-family:'Playfair Display',serif">${fmt$(per.valorFin)}</div>
-                <div style="font-size:11px;color:var(--texto-light)">${fmtKg(per.pesoFin)}</div>
-              </div>
-              <div style="background:var(--crema);border-radius:var(--r-sm);padding:10px">
-                <div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Utilidad generada</div>
-                <div style="font-size:15px;font-family:'Playfair Display',serif;color:${colorUtil}">${fmt$(per.utilidad)}</div>
-                <div style="font-size:11px;color:var(--texto-light)">${((per.utilidad/per.baseInversion)*100).toFixed(1)}% rentabilidad</div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-              <div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:10px">
-                <div style="font-size:10px;color:var(--azul);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Inversionista (${per.pct}%)</div>
-                <div style="font-size:14px;font-family:'Playfair Display',serif;color:var(--azul)">${fmt$(per.baseInversion + per.utilInversor)}</div>
-                <div style="font-size:11px;color:var(--azul);opacity:.8">Capital ${fmt$(per.baseInversion)} + ${fmt$(per.utilInversor)} utilidad → reinvierte</div>
-              </div>
-              <div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px">
-                <div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Socio finca (${pctSocio}%)</div>
-                <div style="font-size:14px;font-family:'Playfair Display',serif;color:var(--verde)">${fmt$(Math.max(0, per.utilSocio))}</div>
-                <div style="font-size:11px;color:var(--verde);opacity:.8">Pagado en ${per.formaPago}</div>
-              </div>
-            </div>
-            <div style="font-size:12px;color:var(--texto-light);background:var(--crema);padding:6px 10px;border-radius:var(--r-sm)">
-              Período ${per.num + 1} arranca desde: <strong style="color:var(--texto)">${fmt$(per.nuevaBase)}</strong>
-            </div>
-          </div>
-        </div>`;
+      var pctSocio = 100 - per.pct;
+      var colorUtil = per.utilidad >= 0 ? 'var(--verde)' : 'var(--rojo)';
+      var rentStr = per.baseInversion > 0 ? ((per.utilidad/per.baseInversion)*100).toFixed(1)+'%' : '0%';
+      return '<div style="border:1px solid var(--borde);border-radius:var(--r);overflow:hidden;margin-bottom:12px">' +
+        '<div style="background:var(--crema-dark);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">' +
+          '<span style="font-size:13px;font-weight:500">Período ' + per.num + ' <span style="background:#D8F3DC;color:#2D6A4F;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">Cerrado</span></span>' +
+          '<span style="font-size:12px;color:var(--texto-light)">' + per.fechaFin + '</span>' +
+        '</div>' +
+        '<div style="padding:12px 14px">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">' +
+            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Punto de partida</div><div style="font-size:15px;font-family:Playfair Display,serif">' + fmt$(per.baseInversion) + '</div><div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.basePeso) + '</div></div>' +
+            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Valor al cierre</div><div style="font-size:15px;font-family:Playfair Display,serif">' + fmt$(per.valorFin) + '</div><div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.pesoFin) + '</div></div>' +
+            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Utilidad</div><div style="font-size:15px;font-family:Playfair Display,serif;color:' + colorUtil + '">' + fmt$(per.utilidad) + '</div><div style="font-size:11px;color:var(--texto-light)">' + rentStr + ' rentabilidad</div></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+            '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--azul);margin-bottom:3px">Inversionista (' + per.pct + '%)</div><div style="font-size:14px;font-family:Playfair Display,serif;color:var(--azul)">' + fmt$(per.baseInversion + per.utilInversor) + '</div><div style="font-size:11px;color:var(--azul);opacity:.8">Reinvierte</div></div>' +
+            '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--verde);margin-bottom:3px">Socio finca (' + (100-per.pct) + '%)</div><div style="font-size:14px;font-family:Playfair Display,serif;color:var(--verde)">' + fmt$(Math.max(0,per.utilSocio)) + '</div><div style="font-size:11px;color:var(--verde);opacity:.8">Pagado en ' + per.formaPago + '</div></div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--texto-light);background:var(--crema);padding:6px 10px;border-radius:var(--r-sm)">Período ' + (per.num+1) + ' arranca desde: <strong style="color:var(--texto)">' + fmt$(per.nuevaBase) + '</strong></div>' +
+        '</div>' +
+      '</div>';
     } else {
-      // Active period
-      const pctSocio = 100 - per.pct;
-      const pesoGan = per.ganancia;
-      const ganColor = pesoGan >= 0 ? 'var(--verde)' : 'var(--rojo)';
-      return `
-        <div style="border:2px solid var(--verde-claro);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
-          <div style="background:var(--verde-pale);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;font-weight:500">Período ${per.num} <span style="background:var(--verde);color:white;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">En curso</span></span>
-            <span style="font-size:12px;color:var(--verde)">Activo</span>
-          </div>
-          <div style="padding:12px 14px">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">
-              <div style="background:var(--crema);border-radius:var(--r-sm);padding:10px">
-                <div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Punto de partida</div>
-                <div style="font-size:15px;font-family:'Playfair Display',serif">${fmt$(per.baseInversion)}</div>
-                <div style="font-size:11px;color:var(--texto-light)">${fmtKg(per.basePeso)}</div>
-              </div>
-              <div style="background:var(--crema);border-radius:var(--r-sm);padding:10px">
-                <div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso actual</div>
-                <div style="font-size:15px;font-family:'Playfair Display',serif;color:var(--verde)">${fmtKg(per.pesoAct)}</div>
-                <div style="font-size:11px;color:${ganColor}">${pesoGan >= 0 ? '+' : ''}${fmtKg(pesoGan)} vs base</div>
-              </div>
-            </div>
-            <div style="font-size:12px;color:var(--texto-med);padding:8px 10px;background:var(--crema);border-radius:var(--r-sm)">
-              Cuando liquides o hagas corte, el sistema calculará automáticamente cuánto le toca al inversionista (${per.pct}%) y al socio de finca (${pctSocio}%).
-            </div>
-          </div>
-        </div>`;
+      var pctSocio2 = 100 - per.pct;
+      var ganColor = per.ganancia >= 0 ? 'var(--verde)' : 'var(--rojo)';
+      return '<div style="border:2px solid var(--verde-claro);border-radius:var(--r);overflow:hidden;margin-bottom:12px">' +
+        '<div style="background:var(--verde-pale);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">' +
+          '<span style="font-size:13px;font-weight:500">Período ' + per.num + ' <span style="background:var(--verde);color:white;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">En curso</span></span>' +
+          '<span style="font-size:12px;color:var(--verde)">Activo</span>' +
+        '</div>' +
+        '<div style="padding:12px 14px">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">' +
+            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Punto de partida</div><div style="font-size:15px;font-family:Playfair Display,serif">' + fmt$(per.baseInversion) + '</div><div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.basePeso) + '</div></div>' +
+            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Peso actual</div><div style="font-size:15px;font-family:Playfair Display,serif;color:var(--verde)">' + fmtKg(per.pesoAct) + '</div><div style="font-size:11px;color:' + ganColor + '">' + (per.ganancia>=0?'+':'') + fmtKg(per.ganancia) + ' vs base</div></div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--texto-med);padding:8px 10px;background:var(--crema);border-radius:var(--r-sm)">Al liquidar o hacer corte se calcula automáticamente: ' + per.pct + '% inversionista / ' + pctSocio2 + '% socio finca.</div>' +
+        '</div>' +
+      '</div>';
     }
   }).join('');
 
-  document.getElementById('ficha-contenido').innerHTML = `
-    <div class="section-header">
-      <div>
-        <h1 class="section-title">${a.nombre || 'Sin nombre'} <span style="font-size:16px;color:var(--texto-light);font-family:'DM Sans'">#${a.chapeta}</span></h1>
-        <p class="section-sub">${a.proposito} · ${a.sexo} · ${a.finca || ''} <span class="periodo-tag" style="margin-left:6px">Período ${nPeriodo}</span></p>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-secondary btn-sm" onclick="abrirEditar('${id}')">✏️ Editar</button>
-        <button class="btn btn-secondary btn-sm" onclick="compartirResumenAnimal('${id}')">📤 Compartir</button>
-        <button class="btn btn-secondary btn-sm" onclick="showPage('pesajes','${id}')">⚖️ Pesajes</button>
-        <button class="btn btn-secondary btn-sm" onclick="abrirGasto('${id}')">💊 Gasto</button>
-        <button class="btn btn-secondary btn-sm" onclick="calcDesdeAnimal('${id}')">💰 Calcular</button>
-        <button class="btn btn-danger btn-sm" onclick="irAVender('${id}')">Liquidar</button>
-      </div>
-    </div>
+  // Gastos
+  var gastosHtml = '';
+  if (a.gastos && a.gastos.length) {
+    var totalGastos = a.gastos.reduce(function(s,g){ return s+g.monto; },0);
+    gastosHtml = '<div class="card"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Gastos adicionales</p>' +
+      '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
+      a.gastos.map(function(g){ return '<tr><td style="padding:6px 0;border-bottom:1px solid var(--borde);color:var(--texto-light)">' + g.fecha + '</td><td style="padding:6px 8px;border-bottom:1px solid var(--borde)">' + g.concepto + (g.detalle?' — '+g.detalle:'') + '</td><td style="padding:6px 0;border-bottom:1px solid var(--borde);text-align:right;font-weight:500;color:var(--rojo)">' + fmt$(g.monto) + '</td></tr>'; }).join('') +
+      '<tr><td colspan="2" style="padding:8px 0;font-weight:500">Total</td><td style="padding:8px 0;text-align:right;font-weight:500;color:var(--rojo)">' + fmt$(totalGastos) + '</td></tr></table></div>';
+  }
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px">
-      <div class="card">
-        <p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Identificación</p>
-        ${row('Chapeta', '#' + a.chapeta)}
-        ${row('Nombre', a.nombre || '—')}
-        ${row('Sexo', a.sexo)}
-        ${row('Propósito', a.proposito)}
-        ${row('Finca', a.finca || '—')}
-        ${row('Color / señales', a.color || '—')}
-        ${row('Potrero', a.potrero || '—')}
-        ${row('Fecha compra', a.fechaCompra)}
-        ${a.fechaNac ? row('Fecha nacimiento', a.fechaNac) : ''}
-        ${madre ? row('Madre', madre.nombre || madre.chapeta) : ''}
-        ${row('Inversionista', (a.inversor || '—') + ' · ' + (a.pctInversor || 50) + '% / Socio ' + (100-(a.pctInversor||50)) + '%')}
-        ${a.pesoObjetivo ? row('Peso objetivo', fmtKg(a.pesoObjetivo) + ' — faltan ' + fmtKg(Math.max(0, a.pesoObjetivo - pesoAct))) : ''}
-      </div>
-      ${a.obs ? `<div class="card"><p style="font-size:12px;color:var(--texto-light);margin-bottom:6px">Observaciones</p><p style="font-size:13px">${a.obs}</p></div>` : ''}
-    </div>
+  // Crias
+  var criasHtml = '';
+  if (crias.length) {
+    criasHtml = '<div class="card"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Crías (' + crias.length + ')</p>' +
+      crias.map(function(c){ return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--borde);font-size:13px" id="cria-row-' + c.id + '"><span>' + (c.nombre||c.chapeta) + ' <span class="badge badge-gray">#' + c.chapeta + '</span></span><button class="btn btn-secondary btn-sm" id="btn-ver-cria-' + c.id + '">Ver →</button></div>'; }).join('') +
+    '</div>';
+  }
 
-    <div class="card">
-      <p style="font-size:13px;font-weight:500;margin-bottom:16px">Evolución por períodos</p>
-      ${evolucionHtml}
-    </div>
+  var fichaHtml =
+    '<div class="section-header">' +
+      '<div>' +
+        '<h1 class="section-title">' + (a.nombre||'Sin nombre') + ' <span style="font-size:16px;color:var(--texto-light);font-family:DM Sans,sans-serif">#' + a.chapeta + '</span></h1>' +
+        '<p class="section-sub">' + a.proposito + ' · ' + a.sexo + ' · ' + (a.finca||'') + ' <span class="periodo-tag" style="margin-left:6px">Período ' + nPeriodo + '</span></p>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap" id="ficha-btns-' + id + '">' +
+        '<button class="btn btn-secondary btn-sm" id="btn-editar-' + id + '">✏️ Editar</button>' +
+        '<button class="btn btn-secondary btn-sm" id="btn-compartir-' + id + '">📤 Compartir</button>' +
+        '<button class="btn btn-secondary btn-sm" id="btn-pesajes-' + id + '">⚖️ Pesajes</button>' +
+        '<button class="btn btn-secondary btn-sm" id="btn-gasto-' + id + '">💊 Gasto</button>' +
+        '<button class="btn btn-secondary btn-sm" style="background:var(--rojo-pale);color:var(--rojo);border-color:#ffc9ca" id="btn-eliminar-' + id + '">🗑️ Eliminar</button>' +
+        '<button class="btn btn-danger btn-sm" id="btn-liquidar-' + id + '">💰 Liquidar</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px">' +
+      '<div class="card">' +
+        '<p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Identificación</p>' +
+        row('Chapeta', '#' + a.chapeta) +
+        row('Nombre', a.nombre||'—') +
+        row('Sexo', a.sexo) +
+        row('Propósito', a.proposito) +
+        row('Finca', a.finca||'—') +
+        row('Color / señales', a.color||'—') +
+        row('Fecha compra', a.fechaCompra) +
+        (a.fechaNac ? row('Fecha nacimiento', a.fechaNac) : '') +
+        (madre ? row('Madre', madre.nombre||madre.chapeta) : '') +
+        row('Inversionista', (a.inversor||'—') + ' · ' + (a.pctInversor||50) + '% / Socio ' + (100-(a.pctInversor||50)) + '%') +
+        (a.pesoObjetivo ? row('Peso objetivo', fmtKg(a.pesoObjetivo) + ' — faltan ' + fmtKg(Math.max(0, a.pesoObjetivo - pesoAct))) : '') +
+      '</div>' +
+      (a.obs ? '<div class="card"><p style="font-size:12px;color:var(--texto-light);margin-bottom:6px">Observaciones</p><p style="font-size:13px">' + a.obs + '</p></div>' : '') +
+    '</div>' +
+    '<div class="card">' +
+      '<p style="font-size:13px;font-weight:500;margin-bottom:16px">Evolución por períodos</p>' +
+      evolucionHtml +
+    '</div>' +
+    gastosHtml +
+    criasHtml +
+    '<div class="alert alert-info" style="font-size:12px;margin-top:14px">' +
+      '📁 Carpeta Drive: <strong>' + a.chapeta + (a.nombre ? ' - ' + a.nombre : '') + '</strong> → Fotos / Liquidación' +
+    '</div>';
 
-    ${crias.length ? `<div class="card"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Crías (${crias.length})</p>${crias.map(c => `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--borde);font-size:13px"><span>${c.nombre || c.chapeta} <span class="badge badge-gray">#${c.chapeta}</span></span><button class="btn btn-secondary btn-sm" onclick="showPage('ficha','${c.id}')">Ver →</button></div>`).join('')}</div>` : ''}
+  document.getElementById('ficha-contenido').innerHTML = fichaHtml;
 
-    <div class="card">
-      <p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Agregar fotos o video</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
-        <label style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border:1.5px dashed var(--borde);border-radius:var(--r-sm);cursor:pointer;background:var(--crema);text-align:center;transition:border-color .15s" onmouseover="this.style.borderColor='var(--verde-claro)'" onmouseout="this.style.borderColor='var(--borde)'">
-          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <span style="font-size:12px;color:var(--texto-med);font-weight:500">Tomar foto</span>
-          <span style="font-size:11px;color:var(--texto-light)">Abre cámara</span>
-          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="previewFichaMedia(this,'foto')">
-        </label>
-        <label style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border:1.5px dashed var(--borde);border-radius:var(--r-sm);cursor:pointer;background:var(--crema);text-align:center;transition:border-color .15s" onmouseover="this.style.borderColor='var(--verde-claro)'" onmouseout="this.style.borderColor='var(--borde)'">
-          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          <span style="font-size:12px;color:var(--texto-med);font-weight:500">Grabar video</span>
-          <span style="font-size:11px;color:var(--texto-light)">Abre cámara</span>
-          <input type="file" accept="video/*" capture="environment" style="display:none" onchange="previewFichaMedia(this,'video')">
-        </label>
-        <label style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border:1.5px dashed var(--borde);border-radius:var(--r-sm);cursor:pointer;background:var(--crema);text-align:center;transition:border-color .15s" onmouseover="this.style.borderColor='var(--verde-claro)'" onmouseout="this.style.borderColor='var(--borde)'">
-          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span style="font-size:12px;color:var(--texto-med);font-weight:500">Desde galería</span>
-          <span style="font-size:11px;color:var(--texto-light)">Varias fotos</span>
-          <input type="file" accept="image/*" multiple style="display:none" onchange="previewFichaMedia(this,'galeria')">
-        </label>
-      </div>
-      <div id="ficha-media-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
-      <div class="alert alert-info" style="font-size:12px;margin-top:12px;margin-bottom:0">
-        📁 Guardar en Drive: <strong>${a.chapeta}${a.nombre ? ' - ' + a.nombre : ''}</strong> → Fotos
-      </div>
-    </div>
-  `;
+  // Attach button events after DOM render
+  var btnEditar = document.getElementById('btn-editar-' + id);
+  var btnCompartir = document.getElementById('btn-compartir-' + id);
+  var btnPesajes = document.getElementById('btn-pesajes-' + id);
+  var btnGasto = document.getElementById('btn-gasto-' + id);
+  var btnEliminar = document.getElementById('btn-eliminar-' + id);
+  var btnLiquidar = document.getElementById('btn-liquidar-' + id);
+
+  if (btnEditar) btnEditar.addEventListener('click', function(){ abrirEditar(id); });
+  if (btnCompartir) btnCompartir.addEventListener('click', function(){ compartirResumenAnimal(id); });
+  if (btnPesajes) btnPesajes.addEventListener('click', function(){ showPage('pesajes', id); });
+  if (btnGasto) btnGasto.addEventListener('click', function(){ abrirGasto(id); });
+  if (btnEliminar) btnEliminar.addEventListener('click', function(){ eliminarAnimal(id); });
+  if (btnLiquidar) btnLiquidar.addEventListener('click', function(){ irAVender(id); });
+
+  // Attach cria buttons
+  crias.forEach(function(c) {
+    var btn = document.getElementById('btn-ver-cria-' + c.id);
+    if (btn) btn.addEventListener('click', function(){ showPage('ficha', c.id); });
+  });
+
+  // Render persistent photos
+  var fotosHtml = renderFichaFotos(a);
+  if (fotosHtml) {
+    document.getElementById('ficha-contenido').insertAdjacentHTML('beforeend', fotosHtml);
+  }
 }
 
 function row(label, val) {
@@ -2135,6 +2103,21 @@ function eliminarFoto(fotoId, animalId, btn) {
   DB.animales = animales;
   _closeModal(btn);
   renderFicha(animalId);
+}
+
+function abrirEditar(id) {
+  currentAnimalId = id;
+  var a = DB.animales.find(function(x){ return x.id === id; });
+  if (!a) return;
+  document.getElementById('e-nombre').value = a.nombre || '';
+  document.getElementById('e-color').value = a.color || '';
+  document.getElementById('e-finca').value = a.finca || 'Sin asignar';
+  document.getElementById('e-potrero').value = a.potrero || '';
+  document.getElementById('e-proposito').value = a.proposito || 'ceba';
+  document.getElementById('e-pct').value = a.pctInversor || 50;
+  document.getElementById('e-inversor').value = a.inversor || '';
+  document.getElementById('e-obs').value = a.obs || '';
+  openModal('modal-editar');
 }
 
 function guardarEdicion() {
@@ -3894,14 +3877,52 @@ function calcTotalAnimal() {
   var hiddenEl = document.getElementById('f-precio');
   if (el) {
     if (peso > 0 && precioKg > 0) {
-      el.textContent = fmtKg(peso) + ' × ' + fmt$(precioKg) + '/kg = ' + fmt$(total);
+      el.textContent = fmt$(total);
       el.style.color = 'var(--verde)';
+      el.style.fontSize = '18px';
     } else {
       el.textContent = 'Ingresa peso y precio/kg';
       el.style.color = 'var(--texto-light)';
+      el.style.fontSize = '14px';
     }
   }
   if (hiddenEl) hiddenEl.value = total;
+}
+
+function eliminarAnimal(id) {
+  var a = DB.animales.find(function(x){ return x.id === id; });
+  if (!a) return;
+  var nombre = a.nombre || '#' + a.chapeta;
+  if (!confirm('Eliminar ' + nombre + ' del registro? Esta accion no se puede deshacer. Si fue vendido o murio, usa Liquidar.')) return;
+  var confirm2 = window.prompt('Escribe ELIMINAR para confirmar:');
+  if (confirm2 !== 'ELIMINAR') { alert('Eliminación cancelada'); return; }
+  var animales = DB.animales.filter(function(x){ return x.id !== id; });
+  DB.animales = animales;
+  renderAnimalNav();
+  renderDashboard();
+  showPage('dashboard');
+  alert('✅ ' + nombre + ' eliminado del registro.');
+}
+
+function driveReconectarSilencioso() {
+  if (typeof google === 'undefined' || !google.accounts) return;
+  if (driveToken) return;
+  var wasConnected = localStorage.getItem('gp_drive_was_connected');
+  if (wasConnected !== '1') return;
+  try {
+    var client = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_CLIENT_ID,
+      scope: DRIVE_SCOPES,
+      callback: function(resp) {
+        if (resp.error) return;
+        driveToken = resp.access_token;
+        driveActualizarUI(true);
+        var savedFolders = localStorage.getItem('gp_drive_folders');
+        if (savedFolders) driveFolderIds = JSON.parse(savedFolders);
+      }
+    });
+    client.requestAccessToken({prompt: 'none'});
+  } catch(e) {}
 }
 
 // ============ INIT ============
@@ -3910,6 +3931,7 @@ function init() {
   renderDashboard();
   document.getElementById('f-fecha-compra').value = today();
   driveCheckInit();
+  setTimeout(driveReconectarSilencioso, 2000);
   pinInit();
   registrarSW();
 
