@@ -714,7 +714,6 @@ document.head.appendChild(link);
         <option value="Finca Rigo">Finca Rigo</option>
         <option value="Finca Walter">Finca Walter</option>
       </select>
-<button class="btn btn-primary btn-sm" onclick="vfGuardarTodo()">✅ Guardar todo</button>
     </div>
   </div>
   <div class="card" style="margin-bottom:14px">
@@ -1170,7 +1169,16 @@ document.head.appendChild(link);
     <div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="ms-notas" style="min-height:60px" placeholder="Ej: Pago utilidad período 1 La Negra, corte marzo 2026..."></textarea></div>
 
     <div class="form-group">
-      <label class="form-label">Link del soporte en Google Drive</label>
+      <label class="form-label">📎 Comprobante / imagen <span style="font-size:11px;color:var(--verde)">→ sube automático a Drive</span></label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px dashed var(--verde-claro);border-radius:var(--r-sm);cursor:pointer;background:var(--verde-pale)">
+        <svg width="16" height="16" fill="none" stroke="var(--verde)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span id="ms-img-label" style="font-size:13px;color:var(--verde)">Tomar foto / elegir imagen</span>
+        <input type="file" id="ms-img-input" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="previewSoporteImg(this)">
+      </label>
+      <div id="ms-img-preview" style="margin-top:6px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">O pega link Drive directamente</label>
       <input class="form-input" id="ms-drive-link" type="url" placeholder="https://drive.google.com/file/...">
       <p class="form-hint">Sube la foto a Drive y pega el enlace aquí para acceso rápido</p>
     </div>
@@ -1368,18 +1376,17 @@ function renderDashboard() {
 function periodoActual(a) {
   var periodos = a.periodos || [];
   var num = periodos.length + 1;
-  var basePeso = a.pesoInicial;
-  var baseInversion = a.pesoInicial * (a.precioKgCompra || 0) || a.precioCompra || 0;
+  var baseInversion, basePeso;
 
   if (periodos.length === 0) {
-    // Período 1 — base original
-    baseInversion = (a.precioCompra || 0) + (a.flete || 0) + (a.comision || 0);
+    // Período 1 — base original = precio compra + flete + comision
+    baseInversion = ((a.precioCompra || 0) + (a.flete || 0) + (a.comision || 0)) || (a.pesoInicial * (a.precioKgCompra || 0));
     basePeso = a.pesoInicial;
   } else {
-    // Período N — base es capital anterior + mi ganancia del corte anterior
+    // Período N — MODELO A: arranca desde el VALOR DE MERCADO al cierre del período anterior
+    // El animal sigue siendo 100% del inversionista al valor real. El socio ya cobró su parte.
     var ultimoPeriodo = periodos[periodos.length - 1];
-    // nuevaBase = baseAnterior + miGanancia (50% de utilidad)
-    baseInversion = ultimoPeriodo.nuevaBase || (ultimoPeriodo.baseInversionPeriodo + ultimoPeriodo.utilidadInversor);
+    baseInversion = ultimoPeriodo.valorCorte; // $2.160.000 — NO $1.780.000
     basePeso = ultimoPeriodo.pesoCorte;
   }
 
@@ -1429,8 +1436,30 @@ function guardarAnimal() {
   document.getElementById('f-finca').value = '';
   document.getElementById('f-pct').value = '50';
   guardarPerfilAnimal(nuevo.id);
+  // Save other fotos taken during creation
+  if (window._fotosCreacion && window._fotosCreacion.length) {
+    var af = DB.animales.find(function(x){ return x.id === nuevo.id; });
+    if (af) {
+      if (!af.fotos) af.fotos = [];
+      window._fotosCreacion.forEach(function(f){ af.fotos.push(f); });
+      DB.animales = DB.animales;
+    }
+    window._fotosCreacion = [];
+  }
   renderAnimalNav();
+  renderDashboard();
+  // Success message
+  var msg = '✅ Animal #' + nuevo.chapeta + ' creado correctamente.';
+  if (driveToken) {
+    driveCrearCarpetaAnimal(nuevo.id).then(function(){ });
+    msg += ' Carpeta en Drive creada.';
+  }
+  // Reset form
+  document.getElementById('form-nuevo-animal').reset();
+  document.getElementById('f-fecha-compra').value = today();
+  document.getElementById('f-inversor').value = 'Andrés A.';
   showPage('ficha', nuevo.id);
+  setTimeout(function(){ alert(msg); }, 300);
 }
 
 // ============ FICHA ============
@@ -1440,7 +1469,7 @@ function renderFicha(id) {
   var p = periodoActual(a);
   var pesoAct = ultimoPeso(a);
   var ganancia = pesoAct - p.basePeso;
-  var gananciaVsBase = ganancia;
+  var gananciaVsBase = isNaN(ganancia) ? 0 : ganancia;
   var ganStr = (gananciaVsBase >= 0 ? '+' : '') + fmtKg(gananciaVsBase);
   var nPeriodo = p.num;
   var madre = a.madre ? DB.animales.find(function(x){ return x.chapeta === a.madre; }) : null;
@@ -1458,13 +1487,13 @@ function renderFicha(id) {
       utilidad: pc.utilidadTotal, utilSocio: pc.utilidadSocio,
       utilInversor: pc.utilidadInversor, fechaFin: pc.fechaCorte,
       pct: a.pctInversor||50, formaPago: pc.socioFormaPago||pc.formaPago||'efectivo',
-      nuevaBase: pc.valorCorte
+      nuevaBase: pc.valorCorte // Modelo A: P(n+1) arranca desde valor de mercado al cierre
     });
   });
   allPeriodos.push({
     num: nPeriodo, tipo:'activo',
     baseInversion: p.baseInversion, basePeso: p.basePeso,
-    pesoAct: pesoAct, ganancia: ganancia, pct: a.pctInversor||50
+    pesoAct: pesoAct, pct: a.pctInversor||50
   });
 
   var evolucionHtml = allPeriodos.map(function(per) {
@@ -1472,45 +1501,126 @@ function renderFicha(id) {
       var pctSocio = 100 - per.pct;
       var colorUtil = per.utilidad >= 0 ? 'var(--verde)' : 'var(--rojo)';
       var rentStr = per.baseInversion > 0 ? ((per.utilidad/per.baseInversion)*100).toFixed(1)+'%' : '0%';
-      return '<div style="border:1px solid var(--borde);border-radius:var(--r);overflow:hidden;margin-bottom:12px">' +
-        '<div style="background:var(--crema-dark);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">' +
-          '<span style="font-size:13px;font-weight:500">Período ' + per.num + ' <span style="background:#D8F3DC;color:#2D6A4F;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">Cerrado</span></span>' +
-          '<span style="font-size:12px;color:var(--texto-light)">' + per.fechaFin + '</span>' +
-        '</div>' +
-        '<div style="padding:12px 14px">' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">' +
-            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Punto de partida</div><div style="font-size:15px;font-family:Playfair Display,serif">' + fmt$(per.baseInversion) + '</div><div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.basePeso) + '</div></div>' +
-            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Valor al cierre</div><div style="font-size:15px;font-family:Playfair Display,serif">' + fmt$(per.valorFin) + '</div><div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.pesoFin) + '</div></div>' +
-            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Utilidad</div><div style="font-size:15px;font-family:Playfair Display,serif;color:' + colorUtil + '">' + fmt$(per.utilidad) + '</div><div style="font-size:11px;color:var(--texto-light)">' + rentStr + ' rentabilidad</div></div>' +
+      return (
+        '<div style="border:0.5px solid var(--borde);border-radius:var(--r);overflow:hidden;margin-bottom:12px">' +
+          '<div style="background:var(--crema-dark);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">' +
+            '<span style="font-size:13px;font-weight:500">Período ' + per.num + ' <span style="background:#E9F5DB;color:#3B6D11;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">Cerrado</span></span>' +
+            '<span style="font-size:12px;color:var(--texto-light)">' + per.fechaFin + '</span>' +
           '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
-            '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--azul);margin-bottom:3px">Inversionista (' + per.pct + '%)</div><div style="font-size:14px;font-family:Playfair Display,serif;color:var(--azul)">' + fmt$(per.baseInversion + per.utilInversor) + '</div><div style="font-size:11px;color:var(--azul);opacity:.8">Reinvierte</div></div>' +
-            '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--verde);margin-bottom:3px">Socio finca (' + (100-per.pct) + '%)</div><div style="font-size:14px;font-family:Playfair Display,serif;color:var(--verde)">' + fmt$(Math.max(0,per.utilSocio)) + '</div><div style="font-size:11px;color:var(--verde);opacity:.8">Pagado en ' + per.formaPago + '</div></div>' +
+          '<div style="padding:12px 14px">' +
+            '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">' +
+              '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px">' +
+                '<div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">Punto de partida</div>' +
+                '<div style="font-size:14px;font-weight:500">' + fmt$(per.baseInversion) + '</div>' +
+                '<div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.basePeso) + '</div>' +
+              '</div>' +
+              '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px">' +
+                '<div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">Valor al cierre</div>' +
+                '<div style="font-size:14px;font-weight:500">' + fmt$(per.valorFin) + '</div>' +
+                '<div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.pesoFin) + '</div>' +
+              '</div>' +
+              '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px">' +
+                '<div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">Ganancia</div>' +
+                '<div style="font-size:14px;font-weight:500;color:' + colorUtil + '">' + fmt$(per.utilidad) + '</div>' +
+                '<div style="font-size:11px;color:var(--texto-light)">' + rentStr + ' ROI</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+              '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:8px">' +
+                '<div style="font-size:10px;color:var(--azul);margin-bottom:2px">Andrés A. (' + per.pct + '%)</div>' +
+                '<div style="font-size:14px;font-weight:500;color:var(--azul)">' + fmt$(per.utilInversor) + '</div>' +
+                '<div style="font-size:11px;color:var(--azul)">Reinvertido</div>' +
+              '</div>' +
+              '<div style="background:#FFF8E1;border-radius:var(--r-sm);padding:8px">' +
+                '<div style="font-size:10px;color:var(--amber-dark);margin-bottom:2px">' + (a.finca||'Socio finca') + ' (' + pctSocio + '%)</div>' +
+                '<div style="font-size:14px;font-weight:500;color:var(--amber-dark)">' + fmt$(Math.max(0,per.utilSocio)) + '</div>' +
+                '<div style="font-size:11px;color:var(--amber-dark)">Pagado en ' + per.formaPago + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--verde-pale);padding:8px 12px;border-radius:var(--r-sm)">' +
+              '<span style="font-size:12px;color:var(--verde);font-weight:500">Período ' + (per.num+1) + ' arranca desde: <strong>' + fmt$(per.nuevaBase) + '</strong> — valor real del animal</span>' +
+              '<button data-pidx="' + (per.num-1) + '" data-aid="' + a.id + '" onclick="editarPeriodo(this.getAttribute(\'data-aid\'), parseInt(this.getAttribute(\'data-pidx\')))" style="font-size:12px;color:var(--verde);background:none;border:none;cursor:pointer">✏️ Editar</button>' +
+            '</div>' +
           '</div>' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--crema);padding:6px 10px;border-radius:var(--r-sm)">' +
-            '<span style="font-size:12px;color:var(--texto-light)">Período ' + (per.num+1) + ' arranca desde: <strong style="color:var(--texto)">' + fmt$(per.nuevaBase) + '</strong></span>' +
-            '<button data-pidx="' + (per.num-1) + '" data-aid="' + id + '" onclick="editarPeriodo(this.getAttribute(\x27data-aid\x27), parseInt(this.getAttribute(\x27data-pidx\x27)))" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--verde)">✏️ Editar período</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+        '</div>'
+      );
     } else {
-      var pctSocio2 = 100 - per.pct;
-      var ganColor = per.ganancia >= 0 ? 'var(--verde)' : 'var(--rojo)';
-      return '<div style="border:2px solid var(--verde-claro);border-radius:var(--r);overflow:hidden;margin-bottom:12px">' +
-        '<div style="background:var(--verde-pale);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">' +
-          '<span style="font-size:13px;font-weight:500">Período ' + per.num + ' <span style="background:var(--verde);color:white;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">En curso</span></span>' +
-          '<span style="font-size:12px;color:var(--verde)">Activo</span>' +
-        '</div>' +
-        '<div style="padding:12px 14px">' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px">' +
-            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Punto de partida</div><div style="font-size:15px;font-family:Playfair Display,serif">' + fmt$(per.baseInversion) + '</div><div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.basePeso) + '</div></div>' +
-            '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Peso actual</div><div style="font-size:15px;font-family:Playfair Display,serif;color:var(--verde)">' + fmtKg(per.pesoAct) + '</div><div style="font-size:11px;color:' + ganColor + '">' + (per.ganancia>=0?'+':'') + fmtKg(per.ganancia) + ' vs base</div></div>' +
+      // Período activo
+      var ganActiva = pesoAct - per.basePeso;
+      var ganColor = ganActiva >= 0 ? 'var(--verde)' : 'var(--rojo)';
+      return (
+        '<div style="border:2px solid var(--verde-claro);border-radius:var(--r);overflow:hidden;margin-bottom:12px">' +
+          '<div style="background:var(--verde-pale);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">' +
+            '<span style="font-size:13px;font-weight:500;color:var(--verde)">Período ' + per.num + ' <span style="background:var(--verde);color:white;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">En curso</span></span>' +
+            '<span style="font-size:12px;color:var(--verde)">Activo</span>' +
           '</div>' +
-           +
-        '</div>' +
-      '</div>';
+          '<div style="padding:12px 14px">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+              '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px">' +
+                '<div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">Punto de partida P' + per.num + '</div>' +
+                '<div style="font-size:15px;font-weight:500">' + fmt$(per.baseInversion) + '</div>' +
+                '<div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.basePeso) + '</div>' +
+              '</div>' +
+              '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:8px">' +
+                '<div style="font-size:10px;color:var(--verde);margin-bottom:2px">Peso actual</div>' +
+                '<div style="font-size:15px;font-weight:500;color:var(--verde)">' + fmtKg(per.pesoAct) + '</div>' +
+                '<div style="font-size:11px;color:' + ganColor + '">' + (ganActiva >= 0 ? '+' : '') + fmtKg(ganActiva) + ' vs inicio P' + per.num + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--texto-med);background:var(--crema);padding:8px 10px;border-radius:var(--r-sm)">' +
+              'Al liquidar: 50% Andrés A. reinvierte · 50% ' + (a.finca||'Socio finca') + ' en efectivo' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
     }
   }).join('');
+
+  // Trazabilidad section
+  var trazHtml = '';
+  if (periodos.length) {
+    var totalGan = 0, totalAndres = 0, totalCamp = 0;
+    periodos.forEach(function(pc){ totalGan += pc.utilidadTotal||0; totalAndres += pc.utilidadInversor||0; totalCamp += pc.utilidadSocio||0; });
+    var trazRows = periodos.map(function(pc, i){
+      var gan = pc.utilidadTotal||0;
+      var gc = gan >= 0 ? 'color:var(--verde)' : 'color:var(--rojo)';
+      return '<tr style="border-bottom:1px solid var(--borde)">' +
+        '<td style="padding:7px 10px;font-size:12px">P' + (i+1) + ' <span style="color:var(--texto-light)">' + pc.fechaCorte + '</span></td>' +
+        '<td style="padding:7px 10px;font-size:12px;text-align:right">' + fmt$(pc.baseInversionPeriodo) + '</td>' +
+        '<td style="padding:7px 10px;font-size:12px;text-align:right;font-weight:500">' + fmt$(pc.valorCorte) + '</td>' +
+        '<td style="padding:7px 10px;font-size:12px;text-align:right;' + gc + ';font-weight:500">' + fmt$(gan) + '</td>' +
+        '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--azul);font-weight:500">' + fmt$(pc.utilidadInversor||0) + '</td>' +
+        '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--amber-dark);font-weight:500">' + fmt$(pc.utilidadSocio||0) + ' ef.</td>' +
+      '</tr>';
+    }).join('');
+    trazHtml =
+      '<div class="card" style="margin-top:14px;border-top:3px solid var(--verde-claro);border-radius:0 0 var(--r) var(--r)">' +
+        '<p style="font-size:13px;font-weight:500;margin:0 0 12px">Trazabilidad de la negociación</p>' +
+        '<div style="overflow-x:auto">' +
+          '<table style="width:100%;border-collapse:collapse">' +
+            '<thead><tr style="background:var(--crema)">' +
+              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:left">Período</th>' +
+              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Base</th>' +
+              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Cierre</th>' +
+              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Ganancia</th>' +
+              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--azul);text-align:right">Andrés A.</th>' +
+              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--amber-dark);text-align:right">' + (a.finca||'Socio') + '</th>' +
+            '</tr></thead>' +
+            '<tbody>' + trazRows +
+              '<tr style="background:var(--crema)">' +
+                '<td style="padding:7px 10px;font-size:12px;font-weight:500" colspan="3">Totales</td>' +
+                '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--verde)">' + fmt$(totalGan) + '</td>' +
+                '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--azul)">' + fmt$(totalAndres) + '</td>' +
+                '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--amber-dark)">' + fmt$(totalCamp) + '</td>' +
+              '</tr>' +
+            '</tbody>' +
+          '</table>' +
+        '</div>' +
+        '<div style="margin-top:10px;padding:8px 12px;background:var(--verde-pale);border-radius:var(--r-sm);font-size:12px;color:var(--verde)">' +
+          'P' + (periodos.length+1) + ' en curso desde <strong>' + fmt$(p.baseInversion) + '</strong> · ' + fmtKg(p.basePeso) +
+        '</div>' +
+      '</div>';
+  }
 
   // Gastos
   var gastosHtml = '';
@@ -1522,13 +1632,14 @@ function renderFicha(id) {
       '<tr><td colspan="2" style="padding:8px 0;font-weight:500">Total</td><td style="padding:8px 0;text-align:right;font-weight:500;color:var(--rojo)">' + fmt$(totalGastos) + '</td></tr></table></div>';
   }
 
-  // Crias
+  // Crías
   var criasHtml = '';
   if (crias.length) {
     criasHtml = '<div class="card"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Crías (' + crias.length + ')</p>' +
       crias.map(function(c){ return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--borde);font-size:13px" id="cria-row-' + c.id + '"><span>' + (c.nombre||c.chapeta) + ' <span class="badge badge-gray">#' + c.chapeta + '</span></span><button class="btn btn-secondary btn-sm" id="btn-ver-cria-' + c.id + '">Ver →</button></div>'; }).join('') +
     '</div>';
   }
+
 
   var fichaHtml = '';
   fichaHtml += renderBotonVolver('← Dashboard', 'dashboard');
@@ -1599,6 +1710,7 @@ function renderFicha(id) {
       '<p style="font-size:13px;font-weight:500;margin-bottom:16px">Evolución por períodos</p>' +
       evolucionHtml +
     '</div>';
+  fichaHtml += trazHtml;
 
       gastosHtml +
     criasHtml +
@@ -1816,18 +1928,12 @@ function ejecutarCorte() {
   if (!fecha || !peso || !precioKg) { alert('Completa todos los campos'); return; }
 
   var valorCorte = peso * precioKg;
-  var utilidad = valorCorte - p.baseInversion;
+  var ganancia = valorCorte - p.baseInversion;
   var pct = a_ref.pctInversor || 50;
-
-  // LÓGICA CORRECTA:
-  // Ganancia total = valorCorte - baseInversion
-  // Campesino: 50% de la ganancia en efectivo
-  // Yo: 50% de la ganancia → se suma a mi capital
-  // Mi nueva base = baseInversion + (utilidad * pct/100)
-  // El animal sigue en la finca, Período 2 arranca desde nuevaBase
-  var miGanancia = utilidad * (pct / 100);
-  var gananciasCampesino = Math.max(0, utilidad * (1 - pct / 100));
-  var nuevaBase = p.baseInversion + miGanancia; // CORRECTO — no valorCorte
+  var miGanancia = ganancia * (pct / 100);
+  var gananciasCampesino = Math.max(0, ganancia * (1 - pct / 100));
+  // MODELO A: nueva base = valor de mercado al cierre (lo que vale el animal hoy)
+  var nuevaBase = valorCorte;
 
   var animales = DB.animales;
   var a = animales.find(function(x){ return x.id === currentAnimalId; });
@@ -1835,32 +1941,22 @@ function ejecutarCorte() {
   a.periodos.push({
     num: p.num, fechaCorte: fecha, pesoCorte: peso, precioKgCorte: precioKg,
     valorCorte: valorCorte, baseInversionPeriodo: p.baseInversion,
-    utilidadTotal: utilidad,
-    utilidadSocio: gananciasCampesino,
-    utilidadInversor: miGanancia,
-    socioFormaPago: forma, formaPago: forma,
+    utilidadTotal: ganancia, utilidadSocio: gananciasCampesino,
+    utilidadInversor: miGanancia, socioFormaPago: forma, formaPago: forma,
     nuevaBase: nuevaBase
   });
 
-  // Registrar pesaje al corte
   if (!a.pesajes) a.pesajes = [];
   if (!a.pesajes.find(function(ps){ return ps.fecha === fecha && ps.peso === peso; })) {
     a.pesajes.push({ fecha: fecha, peso: peso, obs: 'Pesaje al corte — Período ' + p.num });
     a.pesajes.sort(function(x,y){ return x.fecha.localeCompare(y.fecha); });
   }
 
-  // Nueva base para Período siguiente = baseInversion + miGanancia
-  a.baseInversion = nuevaBase;
-  if (!a.periodoBases) a.periodoBases = [];
-  a.periodoBases.push({ periodo: p.num + 1, base: nuevaBase, fecha: fecha });
-
   DB.animales = animales;
   closeModal('modal-corte');
   renderFicha(currentAnimalId);
   renderDashboard();
-  alert(
-    'Corte P' + (p.num+1) + ' — Campesino: $' + gananciasCampesino.toLocaleString('es-CO') + ' | Tu ganancia reinvertida: $' + miGanancia.toLocaleString('es-CO') + ' | Nueva base: $' + nuevaBase.toLocaleString('es-CO')
-  );
+  alert('Corte P' + p.num + ' registrado. Campesino cobra: ' + fmt$(gananciasCampesino) + ' | Tu ganancia: ' + fmt$(miGanancia) + ' | P' + (p.num+1) + ' arranca desde: ' + fmt$(nuevaBase));
 }
 
 function calcLiq(id) {
@@ -2048,8 +2144,10 @@ function guardarSoporte() {
   if (!fecha || !monto) { alert('Ingresa fecha y monto'); return; }
   var soportes = DB.soportes;
   var animalRef = document.getElementById('ms-animal').value;
+  var nuevoId = genId();
+  var imgDriveLink = null;
   soportes.push({
-    id: genId(), fecha: fecha, concepto: concepto,
+    id: nuevoId, fecha: fecha, concepto: concepto,
     animal: animalRef, animalId: currentAnimalId || null,
     monto: monto, forma: document.getElementById('ms-forma').value,
     notas: document.getElementById('ms-notas').value,
@@ -3723,7 +3821,7 @@ function dvCalcularAnimal(id) {
         '<div style="font-size:10px;color:var(--verde);opacity:.7">Capital + ' + fmt$(miGanancia) + ' ganancia</div>' +
       '</div>' +
       '<div style="background:#FFF8E1;border-radius:var(--r-sm);padding:8px">' +
-        '<div style="font-size:10px;color:var(--amber-dark);margin-bottom:2px">Campesino (efectivo)</div>' +
+        '<div style="font-size:10px;color:var(--amber-dark);margin-bottom:2px">' + (a.finca||'Socio') + ' (efectivo)</div>' +
         '<div style="font-size:14px;font-weight:500;color:var(--amber-dark)">' + fmt$(campesinoGanancia) + '</div>' +
         '<div style="font-size:10px;color:var(--amber-dark);opacity:.7">50% de la ganancia</div>' +
       '</div>' +
@@ -3844,7 +3942,7 @@ function dvActualizarResumen() {
         '<div style="font-size:11px;color:var(--verde)">' + miSub + '</div>' +
       '</div>' +
       '<div style="background:#FFF8E1;border-radius:var(--r-sm);padding:12px">' +
-        '<div style="font-size:10px;color:var(--amber-dark);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Campesino cobra</div>' +
+        '<div style="font-size:10px;color:var(--amber-dark);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Socio finca cobra</div>' +
         '<div style="font-size:18px;font-family:Playfair Display,serif;color:var(--amber-dark)">' + fmt$(totalCampesino) + '</div>' +
         '<div style="font-size:11px;color:var(--amber-dark)">50% ganancia · efectivo · no toca capital</div>' +
       '</div>' +
@@ -5153,6 +5251,58 @@ function getPrecioAnimal(a, precios) {
   if (a.madre && a.madre !== '') return pTernero; // cría
   if (a.sexo === 'hembra') return pHembra;
   return pMacho; // novillo/macho
+}
+
+async function driveCrearCarpetaAnimal(animalId) {
+  if (!driveToken) return;
+  var a = DB.animales.find(function(x){ return x.id === animalId; });
+  if (!a) return;
+  var savedFolders = localStorage.getItem('gp_drive_folders');
+  if (savedFolders) driveFolderIds = JSON.parse(savedFolders);
+  var fincaKey = a.finca === 'Finca Walter' ? 'Finca Walter' : 'Finca Rigo';
+  var parentId = driveFolderIds[fincaKey];
+  if (!parentId) return;
+  var nombre = a.chapeta + (a.nombre ? ' - ' + a.nombre : '');
+  var animalFolderId = await driveCrearCarpeta(nombre, parentId);
+  driveFolderIds['animal_' + animalId] = animalFolderId;
+  await driveCrearCarpeta('Fotos', animalFolderId);
+  await driveCrearCarpeta('Liquidacion', animalFolderId);
+  localStorage.setItem('gp_drive_folders', JSON.stringify(driveFolderIds));
+  return animalFolderId;
+}
+
+function previewSoporteImg(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  document.getElementById('ms-img-label').textContent = '✅ ' + (file.name.length > 30 ? file.name.slice(0,28)+'...' : file.name);
+  fileToBase64(file, function(dataUrl) {
+    window._soporteImgData = { dataUrl: dataUrl, nombre: file.name, tipo: file.type };
+    var prev = document.getElementById('ms-img-preview');
+    if (prev) {
+      if (file.type.startsWith('image/')) {
+        prev.innerHTML = '<img src="' + dataUrl + '" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid var(--borde)">';
+      } else {
+        prev.innerHTML = '<div style="padding:8px;background:var(--crema);border-radius:6px;font-size:12px">📄 ' + file.name + '</div>';
+      }
+    }
+  });
+}
+
+async function subirSoporteADrive(animalId, soporteId) {
+  if (!driveToken || !window._soporteImgData) return null;
+  var savedFolders = localStorage.getItem('gp_drive_folders');
+  if (savedFolders) driveFolderIds = JSON.parse(savedFolders);
+  var animalFolderId = driveFolderIds['animal_' + animalId];
+  if (!animalFolderId && animalId) {
+    animalFolderId = await driveCrearCarpetaAnimal(animalId);
+  }
+  var parentId = animalFolderId || driveFolderIds['Soportes'] || driveFolderIds['raiz'];
+  if (!parentId) return null;
+  try {
+    var nombre = 'soporte_' + soporteId + '_' + new Date().toISOString().slice(0,10) + (window._soporteImgData.tipo.includes('pdf') ? '.pdf' : '.jpg');
+    var result = await driveSubirFoto(window._soporteImgData.dataUrl, nombre, parentId);
+    return result ? result.webViewLink : null;
+  } catch(e) { return null; }
 }
 
 // ============ INIT ============
