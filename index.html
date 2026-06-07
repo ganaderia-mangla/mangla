@@ -1289,6 +1289,17 @@ function renderDashboard() {
     pesoTotalLote += ultimoPeso(a);
   });
   var pesoProyectadoTotal = activos.reduce(function(s,a){ return s + getPesoProyectado(a); }, 0);
+  // Valor actual del hato basado en precios de inventario
+  var valorHato = 0;
+  activos.forEach(function(a) {
+    var precioKg = getPrecioAnimal(a, {
+      macho: parseFloat(document.getElementById('precio-macho') ? document.getElementById('precio-macho').value : 0) || 0,
+      hembra: parseFloat(document.getElementById('precio-hembra') ? document.getElementById('precio-hembra').value : 0) || 0,
+      ternero: parseFloat(document.getElementById('precio-ternero') ? document.getElementById('precio-ternero').value : 0) || 0
+    });
+    if (precioKg > 0) valorHato += ultimoPeso(a) * precioKg;
+  });
+  var utilidadPotencial = Math.max(0, valorHato - capitalTotal);
   vendidos.forEach(a => { if (a.liquidacion) utilidadVendidos += a.liquidacion.utilidadTotal || 0; });
 
   const novillos = activos.filter(a => a.sexo === 'macho').length;
@@ -1304,8 +1315,9 @@ function renderDashboard() {
     '<div class="metric-card"><div class="metric-label">Total cabezas activas</div><div class="metric-val green">' + activos.length + '</div><div class="metric-sub">' + novillos + ' novillos · ' + hembras + ' hembras · ' + crias + ' crías</div></div>' +
     '<div class="metric-card"><div class="metric-label">Finca Rigo</div><div class="metric-val" style="color:var(--azul)">' + fRigo + '</div><div class="metric-sub">cabezas activas</div></div>' +
     '<div class="metric-card"><div class="metric-label">Finca Walter</div><div class="metric-val" style="color:var(--verde-med)">' + fWalter + '</div><div class="metric-sub">cabezas activas</div></div>' +
-    '<div class="metric-card"><div class="metric-label">Peso total del lote</div><div class="metric-val amber">' + Math.round(pesoTotalLote).toLocaleString('es-CO') + ' kg</div><div class="metric-sub">' + (activos.length > 0 ? Math.round(pesoTotalLote/activos.length) + ' kg promedio' : '—') + '</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Peso total del lote</div><div class="metric-val amber">' + Math.round(pesoTotalLote).toLocaleString('es-CO') + ' kg</div><div class="metric-sub">' + (activos.length > 0 ? Math.round(pesoTotalLote/activos.length) + ' kg promedio' : '—') + '</div><div class="metric-sub" style="color:var(--verde);margin-top:2px">≈ ' + Math.round(pesoProyectadoTotal).toLocaleString('es-CO') + ' kg proyectado</div></div>' +
     '<div class="metric-card"><div class="metric-label">Capital invertido</div><div class="metric-val amber">' + fmt$(capitalTotal) + '</div><div class="metric-sub">' + (fincaFiltro ? fincaFiltro : 'todas las fincas') + '</div></div>' +
+    '<div class="metric-card"><div class="metric-label">Valor actual del hato</div><div class="metric-val green">' + (valorHato > 0 ? fmt$(valorHato) : '—') + '</div><div class="metric-sub">' + (valorHato > 0 ? 'a precios de hoy' : 'Ingresa precios del inventario') + '</div>' + (utilidadPotencial > 0 ? '<div class="metric-sub" style="color:var(--verde);margin-top:2px">+' + fmt$(utilidadPotencial) + ' utilidad potencial</div>' : '') + '</div>' +
     '<div class="metric-card"><div class="metric-label">Ganancia cobrada</div><div class="metric-val green">' + fmt$(utilidadVendidos) + '</div><div class="metric-sub">acumulado histórico</div></div>';
 
   // Alertas parto
@@ -4356,7 +4368,7 @@ function renderVisitaFinca() {
       '<div style="min-width:100px">' +
         '<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">' +
           '<span class="badge badge-gray" style="font-size:10px">#' + a.chapeta + '</span>' +
-          '<span class="badge ' + catColor + '" style="font-size:10px;padding:2px 7px">' + catNombre + '</span>' +
+          '<span class="badge ' + catColor + '" style="font-size:10px;padding:2px 7px">' + catNombreVf + '</span>' +
         '</div>' +
         '<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">' + (a.nombre||'—') + '</div>' +
       '</div>' +
@@ -5084,6 +5096,64 @@ var _origDBAnimalesSet = Object.getOwnPropertyDescriptor(DB, 'animales') ?
     configurable: true
   });
 })();
+
+function registrarSW() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:') return;
+  try {
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      if (!regs.length) {
+        // Simple offline cache via SW
+        var sw = 'self.addEventListener("fetch",function(e){e.respondWith(caches.match(e.request).then(function(r){return r||fetch(e.request).then(function(res){return caches.open("mangla-v2").then(function(c){c.put(e.request,res.clone());return res;});});}));});self.addEventListener("install",function(){self.skipWaiting();});';
+        var url = URL.createObjectURL(new Blob([sw],{type:'application/javascript'}));
+        navigator.serviceWorker.register(url).catch(function(){});
+      }
+    });
+  } catch(e) {}
+}
+
+function calcCorte() {
+  var peso = parseFloat(document.getElementById('mc-peso') ? document.getElementById('mc-peso').value : 0) || 0;
+  var precioKg = parseFloat(document.getElementById('mc-precio-kg') ? document.getElementById('mc-precio-kg').value : 0) || 0;
+  var prev = document.getElementById('mc-preview');
+  if (!prev || !peso || !precioKg) return;
+  var a = DB.animales.find(function(x){ return x.id === currentAnimalId; });
+  if (!a) return;
+  var p = periodoActual(a);
+  var valorCorte = peso * precioKg;
+  var utilidad = valorCorte - p.baseInversion;
+  var miGanancia = utilidad * 0.5;
+  var campesino = Math.max(0, utilidad * 0.5);
+  var nuevaBase = p.baseInversion + miGanancia;
+  var color = utilidad >= 0 ? 'var(--verde)' : 'var(--rojo)';
+  prev.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px">' +
+      '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">Valor al corte</div><div style="font-size:14px;font-weight:500">' + fmt$(valorCorte) + '</div></div>' +
+      '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">Ganancia</div><div style="font-size:14px;font-weight:500;color:' + color + '">' + fmt$(utilidad) + '</div></div>' +
+      '<div style="background:#FFF8E1;border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--amber-dark);margin-bottom:2px">Campesino cobra</div><div style="font-size:14px;font-weight:500;color:var(--amber-dark)">' + fmt$(campesino) + '</div></div>' +
+      '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--verde);margin-bottom:2px">Tu ganancia reinvertida</div><div style="font-size:14px;font-weight:500;color:var(--verde)">' + fmt$(miGanancia) + '</div></div>' +
+      '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--azul);margin-bottom:2px">Tu nueva base P' + (p.num+1) + '</div><div style="font-size:14px;font-weight:500;color:var(--azul)">' + fmt$(nuevaBase) + '</div></div>' +
+    '</div>';
+}
+
+function getPrecioAnimal(a, precios) {
+  // precios can be an object {macho, hembra, ternero} or a prefix string for DOM elements
+  var pMacho, pHembra, pTernero;
+  if (typeof precios === 'object' && precios !== null) {
+    pMacho = precios.macho || 0;
+    pHembra = precios.hembra || 0;
+    pTernero = precios.ternero || 0;
+  } else {
+    var prefix = precios || '';
+    pMacho = parseFloat(document.getElementById(prefix + 'precio-macho') ? document.getElementById(prefix + 'precio-macho').value : 0) || 0;
+    pHembra = parseFloat(document.getElementById(prefix + 'precio-hembra') ? document.getElementById(prefix + 'precio-hembra').value : 0) || 0;
+    pTernero = parseFloat(document.getElementById(prefix + 'precio-ternero') ? document.getElementById(prefix + 'precio-ternero').value : 0) || 0;
+  }
+  // Determine category
+  if (a.madre && a.madre !== '') return pTernero; // cría
+  if (a.sexo === 'hembra') return pHembra;
+  return pMacho; // novillo/macho
+}
 
 // ============ INIT ============
 function init() {
