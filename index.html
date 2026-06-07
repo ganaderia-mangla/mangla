@@ -276,12 +276,9 @@ document.head.appendChild(link);
     <div class="nav-section-label">Análisis</div>
     <div class="nav-item" onclick="showPage('mi-inversion')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      ¿Qué vendo?
+      Vender
     </div>
-    <div class="nav-item" onclick="showPage('scorecard')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-      Scorecard
-    </div>
+
     <div class="nav-item" onclick="showPage('calculadora')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
       Calculadora
@@ -415,6 +412,16 @@ document.head.appendChild(link);
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Fecha de compra *</label><input class="form-input" id="f-fecha-compra" type="date"></div>
       <div class="form-group"><label class="form-label">Fecha de nacimiento</label><input class="form-input" id="f-fecha-nac" type="date"><p class="form-hint">Solo si se conoce — opcional</p></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Flete ($) <span style="color:var(--texto-light);font-weight:400">opcional</span></label>
+        <input class="form-input" id="f-flete" type="number" min="0" step="10000" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Comisión ($) <span style="color:var(--texto-light);font-weight:400">opcional</span></label>
+        <input class="form-input" id="f-comision" type="number" min="0" step="10000" placeholder="0">
+      </div>
     </div>
     <hr class="divider">
     <div class="form-grid">
@@ -559,12 +566,12 @@ document.head.appendChild(link);
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
       <div class="form-group" style="margin:0">
         <label class="form-label">Precio de compra / base ($)</label>
-        <input class="form-input" id="cc-inversion" type="number" placeholder="2.800.000" min="0" step="50000" onchange="calcCalc()">
+        <input class="form-input" id="cc-inversion" type="number" oninput="calcBreakEven()" placeholder="2.800.000" min="0" step="50000" onchange="calcCalc()">
         <p class="form-hint">Inversión del período</p>
       </div>
       <div class="form-group" style="margin:0">
         <label class="form-label">Otros costos ($)</label>
-        <input class="form-input" id="cc-otros" type="number" value="0" min="0" step="10000" onchange="calcCalc()">
+        <input class="form-input" id="cc-otros" type="number" oninput="calcBreakEven()" value="0" min="0" step="10000" onchange="calcCalc()">
       </div>
       <div class="form-group" style="margin:0">
         <label class="form-label">% del inversionista</label>
@@ -576,15 +583,19 @@ document.head.appendChild(link);
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
       <div class="form-group" style="margin:0">
         <label class="form-label">Peso de venta (kg)</label>
-        <input class="form-input" id="cc-peso" type="number" placeholder="450" min="0" step="1" onchange="calcCalc()">
+        <input class="form-input" id="cc-peso" type="number" oninput="calcBreakEven()" placeholder="450" min="0" step="1" onchange="calcCalc()">
       </div>
       <div class="form-group" style="margin:0">
         <label class="form-label">Precio por kg ($)</label>
-        <input class="form-input" id="cc-precio-kg" type="number" placeholder="9.500" min="0" step="100" onchange="calcCalc()">
+        <input class="form-input" id="cc-precio-kg" type="number" oninput="calcBreakEven()" placeholder="9.500" min="0" step="100" onchange="calcCalc()">
       </div>
     </div>
     <div id="cc-resultado" style="margin-top:14px">
       <p style="color:var(--texto-light);font-size:13px;text-align:center;padding:12px 0">Completa los datos para ver el resultado</p>
+    </div>
+    <div id="cc-breakeven" style="margin-top:10px;display:none" class="alert alert-info">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="cc-breakeven-text"></span>
     </div>
   </div>
 
@@ -601,31 +612,31 @@ document.head.appendChild(link);
 </div>
 
 <!-- MI INVERSIÓN / DECISIÓN DE VENTA -->
+<!-- VENDER -->
 <div class="page" id="page-mi-inversion">
   <div style="padding-top:8px"><button onclick="showPage('dashboard')" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--verde);font-size:13px;cursor:pointer;padding:0 0 12px;font-family:DM Sans,sans-serif;font-weight:500"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>← Dashboard</button></div>
   <div class="section-header">
-    <div><h1 class="section-title">¿Qué vendo?</h1><p class="section-sub">Selecciona animales · simula · liquida</p></div>
+    <div><h1 class="section-title">Vender</h1><p class="section-sub">Selecciona animales · elige escenario · ejecuta</p></div>
   </div>
-  <div class="card" style="margin-bottom:14px;border-left:4px solid var(--verde)">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
-      <div>
-        <p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Capital acumulado disponible</p>
-        <p style="font-size:28px;font-family:Playfair Display,serif;font-weight:500;color:var(--verde);margin:0" id="cap-disponible">$0</p>
-        <p style="font-size:12px;color:var(--texto-light);margin-top:2px" id="cap-detalle">Capital inicial + utilidades de ventas</p>
+
+  <!-- PASO 1: SELECCIONAR ESCENARIO -->
+  <div id="vender-escenario-selector" class="card" style="margin-bottom:14px">
+    <p style="font-size:13px;font-weight:500;margin-bottom:12px">¿Qué vas a hacer?</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div id="btn-escenario-corte" onclick="venderSetEscenario('corte')" style="border:2px solid var(--borde);border-radius:var(--r);padding:16px;cursor:pointer;transition:all .15s">
+        <div style="font-size:22px;margin-bottom:8px">🔄</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px">Corte de cuentas</div>
+        <div style="font-size:12px;color:var(--texto-light)">El animal sigue en la finca. Cerramos el período, le pagas al campesino y tu capital crece. Decides si sacar o reinvertir tu parte.</div>
       </div>
-      <div style="text-align:right">
-        <p style="font-size:11px;color:var(--texto-light);margin-bottom:4px">Total invertido hoy</p>
-        <p style="font-size:18px;font-family:Playfair Display,serif;color:var(--texto);margin:0" id="cap-invertido">$0</p>
+      <div id="btn-escenario-venta" onclick="venderSetEscenario('venta')" style="border:2px solid var(--borde);border-radius:var(--r);padding:16px;cursor:pointer;transition:all .15s">
+        <div style="font-size:22px;margin-bottom:8px">💰</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px">Liquidación final</div>
+        <div style="font-size:12px;color:var(--texto-light)">El animal sale de la finca. Recuperas todo tu capital base primero, la ganancia se divide 50/50 y tu parte se reinvierte.</div>
       </div>
     </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--borde);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <label style="font-size:12px;color:var(--texto-med)">Capital inicial (si no hay ventas previas)</label>
-      <input type="number" id="cap-inicial-input" class="form-input" style="width:160px;padding:6px 10px"
-        placeholder="Ej: 50.000.000" min="0" step="100000"
-        value="" onchange="guardarCapitalInicial(this.value)">
-      <span style="font-size:12px;color:var(--texto-light)">Se suma al capital acumulado</span>
-    </div>
   </div>
+
+  <!-- PASO 2: PRECIOS DEL DÍA -->
   <div class="card" style="margin-bottom:14px">
     <p style="font-size:13px;font-weight:500;margin-bottom:10px">Precios del día</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
@@ -634,9 +645,11 @@ document.head.appendChild(link);
       <div><label style="font-size:11px;color:var(--texto-light);display:block;margin-bottom:4px">Terneros ($/kg)</label><input type="number" id="mi-inv-precio-ternero" class="form-input" style="padding:7px 10px" placeholder="6.000" min="0" step="100" onchange="renderDecisionVenta()"></div>
     </div>
   </div>
+
+  <!-- PASO 3: LISTA ANIMALES -->
   <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
     <div style="padding:14px 16px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <p style="font-size:13px;font-weight:500;margin:0">Animales activos — selecciona los que vas a vender</p>
+      <p style="font-size:13px;font-weight:500;margin:0">Selecciona los animales</p>
       <div style="display:flex;gap:8px">
         <button class="btn btn-secondary btn-sm" onclick="dvSeleccionarTodos()">Todos</button>
         <button class="btn btn-secondary btn-sm" onclick="dvLimpiarSeleccion()">Limpiar</button>
@@ -644,17 +657,34 @@ document.head.appendChild(link);
     </div>
     <div id="dv-lista"></div>
   </div>
+
+  <!-- PASO 4: RESUMEN Y DECISIÓN -->
   <div id="dv-resumen" style="display:none" class="card">
-    <p style="font-size:13px;font-weight:500;margin-bottom:14px">Simulación de venta</p>
+    <p style="font-size:13px;font-weight:500;margin-bottom:14px" id="dv-resumen-titulo">Simulación</p>
     <div id="dv-resumen-contenido"></div>
+
+    <!-- Decisión solo para corte -->
+    <div id="dv-decision-corte" style="display:none;margin-top:14px;padding:14px;background:var(--crema);border-radius:var(--r-sm);border:1px solid var(--borde)">
+      <p style="font-size:13px;font-weight:500;margin-bottom:10px">¿Qué haces con tu 50% de ganancia?</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1.5px solid var(--borde);border-radius:var(--r-sm);cursor:pointer;background:var(--blanco)">
+          <input type="radio" name="dv-decision" value="reinvertir" checked onchange="dvActualizarResumen()">
+          <div><div style="font-size:13px;font-weight:500;color:var(--verde)">🔄 Reinvertir</div><div style="font-size:12px;color:var(--texto-light)">Tu capital crece. No recibes efectivo. Período siguiente arranca con base más alta.</div></div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1.5px solid var(--borde);border-radius:var(--r-sm);cursor:pointer;background:var(--blanco)">
+          <input type="radio" name="dv-decision" value="cobrar" onchange="dvActualizarResumen()">
+          <div><div style="font-size:13px;font-weight:500;color:var(--amber-dark)">💵 Cobrar efectivo</div><div style="font-size:12px;color:var(--texto-light)">Recibes tu ganancia en efectivo. Tu capital vuelve a la base original.</div></div>
+        </label>
+      </div>
+    </div>
+
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--borde);display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-danger" onclick="dvEjecutarVentas()">Confirmar ventas y liquidar</button>
+      <button class="btn btn-danger" id="btn-ejecutar-vender" onclick="dvEjecutarAccion()">Confirmar y ejecutar</button>
       <button class="btn btn-secondary" onclick="dvLimpiarSeleccion()">Cancelar</button>
     </div>
   </div>
   <div id="mi-inv-metrics"></div>
 </div>
-
 <!-- SCORECARD -->
 <div class="page" id="page-scorecard">
   <div style="padding-top:8px"><button onclick="showPage('dashboard')" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--verde);font-size:13px;cursor:pointer;padding:0 0 12px;font-family:DM Sans,sans-serif;font-weight:500"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>← Dashboard</button></div>
@@ -723,6 +753,20 @@ document.head.appendChild(link);
   <div style="padding-top:8px"><button onclick="showPage('dashboard')" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--verde);font-size:13px;cursor:pointer;padding:0 0 12px;font-family:DM Sans,sans-serif;font-weight:500"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>← Dashboard</button></div>
   <div class="section-header">
     <div><h1 class="section-title">Historial de ventas</h1><p class="section-sub">Todos los animales liquidados</p></div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+    <select id="hist-filtro-anio" class="form-input" style="padding:6px 10px;width:auto" onchange="renderHistorialLiq()">
+      <option value="">Todos los años</option>
+      <option value="2024">2024</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+    </select>
+    <select id="hist-filtro-tipo" class="form-input" style="padding:6px 10px;width:auto" onchange="renderHistorialLiq()">
+      <option value="">Ventas y bajas</option>
+      <option value="venta">Solo ventas</option>
+      <option value="baja">Solo bajas</option>
+    </select>
   </div>
   <div id="historial-liq-resumen" style="margin-bottom:16px"></div>
   <div class="card">
@@ -834,6 +878,17 @@ document.head.appendChild(link);
   <div class="card">
     <p style="font-size:14px;font-weight:500;margin-bottom:12px">Estadísticas del sistema</p>
     <div id="backup-stats"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="width:36px;height:36px;border-radius:var(--r-sm);background:#F1EFE8;display:flex;align-items:center;justify-content:center">
+        <svg width="18" height="18" fill="none" stroke="var(--texto-med)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div><p style="font-size:14px;font-weight:500;margin:0">PIN de acceso</p><p style="font-size:12px;color:var(--texto-light);margin:0">Protege la app con 4 dígitos · bloqueó tras 5 intentos</p></div>
+    </div>
+    <p style="font-size:13px;color:var(--texto-med);margin-bottom:12px">La primera vez crea tu PIN. Si lo olvidas, el único recupero es reimportar el backup.</p>
+    <button class="btn btn-secondary" onclick="pinCambiar()">🔐 Activar / cambiar PIN</button>
   </div>
 </div>
 
@@ -1169,7 +1224,6 @@ function showPage(page, animalId) {
     renderDecisionVenta();
   }
   if (page === 'visita-finca') { vfPesosTemp = {}; document.getElementById('vf-fecha').value = today(); vfSetProximaSeisMeses(); renderVisitaFinca(); }
-  if (page === 'scorecard') { renderScorecard(); }
   if (page === 'backup') { renderBackupStats(); driveActualizarUI(!!driveToken); }
   closeSidebar();
 }
@@ -1197,6 +1251,7 @@ function renderAnimalNav() {
       <div class="animal-acc-header" onclick="toggleAcc('${a.id}')">
         <span class="chapeta">${a.chapeta}</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.nombre || a.chapeta}</span>
+        <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:4px;background:${getFrescuraAnimal(a)==='rojo'?'#c1121f':getFrescuraAnimal(a)==='amarillo'?'#e9c46a':'#52b788'}" title="Frescura datos"></span>
         <span class="acc-arrow">▼</span>
       </div>
       <div class="animal-acc-body" id="accbody-${a.id}">
@@ -1233,6 +1288,7 @@ function renderDashboard() {
     capitalTotal += p.baseInversion;
     pesoTotalLote += ultimoPeso(a);
   });
+  var pesoProyectadoTotal = activos.reduce(function(s,a){ return s + getPesoProyectado(a); }, 0);
   vendidos.forEach(a => { if (a.liquidacion) utilidadVendidos += a.liquidacion.utilidadTotal || 0; });
 
   const novillos = activos.filter(a => a.sexo === 'macho').length;
@@ -1250,7 +1306,7 @@ function renderDashboard() {
     '<div class="metric-card"><div class="metric-label">Finca Walter</div><div class="metric-val" style="color:var(--verde-med)">' + fWalter + '</div><div class="metric-sub">cabezas activas</div></div>' +
     '<div class="metric-card"><div class="metric-label">Peso total del lote</div><div class="metric-val amber">' + Math.round(pesoTotalLote).toLocaleString('es-CO') + ' kg</div><div class="metric-sub">' + (activos.length > 0 ? Math.round(pesoTotalLote/activos.length) + ' kg promedio' : '—') + '</div></div>' +
     '<div class="metric-card"><div class="metric-label">Capital invertido</div><div class="metric-val amber">' + fmt$(capitalTotal) + '</div><div class="metric-sub">' + (fincaFiltro ? fincaFiltro : 'todas las fincas') + '</div></div>' +
-    '<div class="metric-card"><div class="metric-label">Utilidad vendidos</div><div class="metric-val green">' + fmt$(utilidadVendidos) + '</div><div class="metric-sub">acumulado histórico</div></div>';
+    '<div class="metric-card"><div class="metric-label">Ganancia cobrada</div><div class="metric-val green">' + fmt$(utilidadVendidos) + '</div><div class="metric-sub">acumulado histórico</div></div>';
 
   // Alertas parto
   const alertasParto = activos.filter(a => a.sexo === 'hembra' && a.partos && a.partos.length > 0 && diffMeses(a.partos[a.partos.length-1].fecha, today()) >= 13);
@@ -1298,10 +1354,24 @@ function renderDashboard() {
 }
 
 function periodoActual(a) {
-  const cierres = a.periodos || [];
-  if (!cierres.length) return { baseInversion: a.precioCompra + (a.otrosCostos || 0), basePeso: a.pesoInicial, num: 1 };
-  const ultimo = cierres[cierres.length - 1];
-  return { baseInversion: ultimo.valorCorte, basePeso: ultimo.pesoCorte, num: cierres.length + 1 };
+  var periodos = a.periodos || [];
+  var num = periodos.length + 1;
+  var basePeso = a.pesoInicial;
+  var baseInversion = a.pesoInicial * (a.precioKgCompra || 0) || a.precioCompra || 0;
+
+  if (periodos.length === 0) {
+    // Período 1 — base original
+    baseInversion = (a.precioCompra || 0) + (a.flete || 0) + (a.comision || 0);
+    basePeso = a.pesoInicial;
+  } else {
+    // Período N — base es capital anterior + mi ganancia del corte anterior
+    var ultimoPeriodo = periodos[periodos.length - 1];
+    // nuevaBase = baseAnterior + miGanancia (50% de utilidad)
+    baseInversion = ultimoPeriodo.nuevaBase || (ultimoPeriodo.baseInversionPeriodo + ultimoPeriodo.utilidadInversor);
+    basePeso = ultimoPeriodo.pesoCorte;
+  }
+
+  return { num: num, baseInversion: baseInversion, basePeso: basePeso };
 }
 
 function ultimoPeso(a) {
@@ -1328,6 +1398,9 @@ function guardarAnimal() {
     id: genId(), chapeta, nombre: document.getElementById('f-nombre').value.trim(),
     sexo, proposito, color: document.getElementById('f-color').value.trim(),
     finca: document.getElementById('f-finca').value || 'Sin asignar',
+    precioKgCompra: parseFloat(document.getElementById('f-precio-kg').value) || 0,
+    flete: parseFloat(document.getElementById('f-flete') ? document.getElementById('f-flete').value : 0) || 0,
+    comision: parseFloat(document.getElementById('f-comision') ? document.getElementById('f-comision').value : 0) || 0,
     potrero: '',
     fechaCompra, fechaNac: document.getElementById('f-fecha-nac').value,
     pesoInicial: peso, precioCompra: precio,
@@ -1421,7 +1494,7 @@ function renderFicha(id) {
             '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Punto de partida</div><div style="font-size:15px;font-family:Playfair Display,serif">' + fmt$(per.baseInversion) + '</div><div style="font-size:11px;color:var(--texto-light)">' + fmtKg(per.basePeso) + '</div></div>' +
             '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:3px">Peso actual</div><div style="font-size:15px;font-family:Playfair Display,serif;color:var(--verde)">' + fmtKg(per.pesoAct) + '</div><div style="font-size:11px;color:' + ganColor + '">' + (per.ganancia>=0?'+':'') + fmtKg(per.ganancia) + ' vs base</div></div>' +
           '</div>' +
-          '<div style="font-size:12px;color:var(--texto-med);padding:8px 10px;background:var(--crema);border-radius:var(--r-sm)">Al liquidar o hacer corte se calcula automáticamente: ' + per.pct + '% inversionista / ' + pctSocio2 + '% socio finca.</div>' +
+           +
         '</div>' +
       '</div>';
     }
@@ -1447,39 +1520,35 @@ function renderFicha(id) {
 
   var fichaHtml = '';
   fichaHtml += renderBotonVolver('← Dashboard', 'dashboard');
-  fichaHtml += (
-    '<div class="section-header">' +
-      '<div>' +
-        '<h1 class="section-title">' + (a.nombre||'Sin nombre') + ' <span style="font-size:16px;color:var(--texto-light);font-family:DM Sans,sans-serif">#' + a.chapeta + '</span></h1>' +
-        '<p class="section-sub">' + a.proposito + ' · ' + a.sexo + ' · ' + (a.finca||'') + ' <span class="periodo-tag" style="margin-left:6px">Período ' + nPeriodo + '</span></p>' +
-      '</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap" id="ficha-btns-' + id + '">' +
-        '<button class="btn btn-secondary btn-sm" id="btn-editar-' + id + '">✏️ Editar</button>' +
-        '<button class="btn btn-secondary btn-sm" id="btn-compartir-' + id + '">📤 Compartir</button>' +
-        '<button class="btn btn-secondary btn-sm" id="btn-pesajes-' + id + '">⚖️ Pesajes</button>' +
-        '<button class="btn btn-secondary btn-sm" id="btn-gasto-' + id + '">💊 Gasto</button>' +
-        '<button class="btn btn-secondary btn-sm" id="btn-soporte-' + id + '">📎 Soporte</button>' +
-        '<button class="btn btn-secondary btn-sm" style="background:var(--rojo-pale);color:var(--rojo);border-color:#ffc9ca" id="btn-eliminar-' + id + '">🗑️ Eliminar</button>' +
-        (a.madre ? '<button class="btn btn-secondary btn-sm" id="btn-promover-' + id + '">⬆️ Promover</button>' : '') +
-        '<button class="btn btn-danger btn-sm" id="btn-liquidar-' + id + '">💰 Liquidar</button>' +
-      '</div>' +
-    '</div>'
-  );
+  fichaHtml += '<div style="display:flex;gap:5px;align-items:center;margin-bottom:12px;overflow-x:auto;padding-bottom:2px" id="ficha-btns-' + id + '">' +
+    '<button class="btn btn-secondary btn-sm" id="btn-editar-' + id + '" style="white-space:nowrap">✏️ Editar</button>' +
+    '<button class="btn btn-secondary btn-sm" id="btn-compartir-' + id + '" style="white-space:nowrap">📤 PDF</button>' +
+    '<button class="btn btn-secondary btn-sm" id="btn-pesajes-' + id + '" style="white-space:nowrap">⚖️ Pesajes</button>' +
+    '<button class="btn btn-secondary btn-sm" id="btn-gasto-' + id + '" style="white-space:nowrap">💊 Gasto</button>' +
+    '<button class="btn btn-secondary btn-sm" id="btn-soporte-' + id + '" style="white-space:nowrap">📎 Soporte</button>' +
+    (a.madre ? '<button class="btn btn-secondary btn-sm" id="btn-promover-' + id + '" style="white-space:nowrap">⬆️ Promover</button>' : '') +
+    '<button class="btn btn-secondary btn-sm" id="btn-baja-' + id + '" style="white-space:nowrap;background:#fff3e0;color:#e65100;border-color:#ffcc80">💀 Baja</button>' +
+    '<button class="btn btn-secondary btn-sm" id="btn-eliminar-' + id + '" style="white-space:nowrap;background:var(--rojo-pale);color:var(--rojo);border-color:#ffc9ca">🗑️ Eliminar</button>' +
+    '<button class="btn btn-danger btn-sm" id="btn-liquidar-' + id + '" style="white-space:nowrap">💰 Liquidar</button>' +
+  '</div>';;
   fichaHtml +=
     '<div class="card" style="margin-bottom:16px">' +
       '<div style="display:flex;gap:20px;align-items:flex-start">' +
         // Photo 150px
         '<div style="position:relative;flex-shrink:0">' +
           (a.fotoPerfil ?
-            '<img src="' + a.fotoPerfil + '" style="width:150px;height:150px;object-fit:cover;border-radius:var(--r);border:2px solid var(--verde-claro)">' :
-            '<div style="width:150px;height:150px;border-radius:var(--r);background:var(--verde-pale);border:2px solid var(--verde-claro);display:flex;align-items:center;justify-content:center;font-size:54px">🐄</div>'
+            '<img src="' + a.fotoPerfil + '" style="width:160px;height:160px;object-fit:cover;border-radius:var(--r);border:2px solid var(--verde-claro)">' :
+            '<div style="width:160px;height:160px;border-radius:var(--r);background:var(--verde-pale);border:2px solid var(--verde-claro);display:flex;align-items:center;justify-content:center;font-size:58px">🐄</div>'
           ) +
           '<button id="btn-foto-perfil-' + id + '" style="position:absolute;bottom:6px;right:6px;background:var(--verde);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Cambiar foto de perfil">' +
             '<svg width="13" height="13" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
           '</button>' +
         '</div>' +
-        // Data grid
-        '<div style="flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 24px">' +
+        // Name + subtitle + data
+        '<div style="flex:1;min-width:0">' +
+          '<h1 style="font-size:20px;font-weight:500;margin:0 0 4px;color:var(--texto)">' + (a.nombre||'Sin nombre') + ' <span style="font-size:14px;color:var(--texto-light);font-weight:400">#' + a.chapeta + '</span></h1>' +
+          '<p style="font-size:13px;color:var(--texto-med);margin:0 0 12px">' + a.proposito + ' · ' + a.sexo + ' · ' + (a.finca||'') + ' <span class="periodo-tag" style="margin-left:6px">P' + nPeriodo + '</span></p>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 24px">' +
           '<div>' +
             row('Chapeta', '#' + a.chapeta) +
             row('Nombre', a.nombre||'—') +
@@ -1493,15 +1562,17 @@ function renderFicha(id) {
             (a.fechaNac ? row('Nacimiento', a.fechaNac) : '') +
             (madre ? row('Madre', '#' + a.madre + (madre.nombre ? ' ' + madre.nombre : '')) : '') +
             row('Inversionista', (a.inversor||'—') + ' · ' + (a.pctInversor||50) + '%') +
+          ((a.flete || a.comision) ? row('Costos adquisición', (a.flete ? 'Flete ' + fmt$(a.flete) : '') + (a.flete && a.comision ? ' · ' : '') + (a.comision ? 'Comisión ' + fmt$(a.comision) : '')) : '') +
           '</div>' +
         '</div>' +
       '</div>' +
       // Metrics row
-      '<div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--borde)">' +
-        '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px;flex:1"><div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso actual</div><div style="font-size:16px;font-weight:500;color:var(--verde)">' + fmtKg(pesoAct) + '</div></div>' +
-        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Ganancia</div><div style="font-size:16px;font-weight:500;color:' + (gananciaVsBase>=0?'var(--verde)':'var(--rojo)') + '">' + ganStr + '</div></div>' +
-        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Base inversión</div><div style="font-size:16px;font-weight:500">' + fmt$(p.baseInversion) + '</div></div>' +
-        '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:10px;flex:1"><div style="font-size:10px;color:var(--azul);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Período</div><div style="font-size:16px;font-weight:500;color:var(--azul)">' + nPeriodo + '</div></div>' +
+      '<div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--borde);flex-wrap:wrap">' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso inicial</div><div style="font-size:16px;font-weight:500">' + fmtKg(a.pesoInicial) + '</div></div>' +
+        '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso actual</div><div style="font-size:16px;font-weight:500;color:var(--verde)">' + fmtKg(pesoAct) + '</div></div>' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Ganancia vs base</div><div style="font-size:16px;font-weight:500;color:' + (gananciaVsBase>=0?'var(--verde)':'var(--rojo)') + '">' + ganStr + '</div></div>' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Base inversión</div><div style="font-size:16px;font-weight:500">' + fmt$(p.baseInversion) + '</div></div>' +
+        '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--azul);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Período</div><div style="font-size:16px;font-weight:500;color:var(--azul)">' + nPeriodo + '</div></div>' +
       '</div>' +
       // Observations at bottom
       (a.obs ?
@@ -1559,6 +1630,8 @@ function renderFicha(id) {
   if (btnSoporte) btnSoporte.addEventListener('click', function(){ abrirSoporteAnimal(id); });
   if (btnEliminar) btnEliminar.addEventListener('click', function(){ eliminarAnimal(id); });
   if (btnLiquidar) btnLiquidar.addEventListener('click', function(){ irAVender(id); });
+  var btnBaja = document.getElementById('btn-baja-' + id);
+  if (btnBaja) btnBaja.addEventListener('click', function(){ registrarBaja(id); });
   var btnPromover = document.getElementById('btn-promover-' + id);
   if (btnPromover) btnPromover.addEventListener('click', function(){ abrirPromover(id); });
   var btnFotoPerfil = document.getElementById('btn-foto-perfil-' + id);
@@ -1721,59 +1794,61 @@ function calcularCorte() {
 }
 
 function ejecutarCorte() {
-  const a_ref = DB.animales.find(x => x.id === currentAnimalId);
+  var a_ref = DB.animales.find(function(x){ return x.id === currentAnimalId; });
   if (!a_ref) return;
-  const p = periodoActual(a_ref);
-  const fecha = document.getElementById('mc-fecha').value;
-  const peso = parseFloat(document.getElementById('mc-peso').value);
-  const precioKg = parseFloat(document.getElementById('mc-precio-kg').value);
-  const forma = document.getElementById('mc-forma-pago').value;
+  var p = periodoActual(a_ref);
+  var fecha = document.getElementById('mc-fecha').value;
+  var peso = parseFloat(document.getElementById('mc-peso').value);
+  var precioKg = parseFloat(document.getElementById('mc-precio-kg').value);
+  var forma = document.getElementById('mc-forma-pago').value;
   if (!fecha || !peso || !precioKg) { alert('Completa todos los campos'); return; }
-  const valorCorte = peso * precioKg;
-  const utilidad = valorCorte - p.baseInversion;
-  const pct = a_ref.pctInversor || 50;
-  const animales = DB.animales;
-  const a = animales.find(x => x.id === currentAnimalId);
+
+  var valorCorte = peso * precioKg;
+  var utilidad = valorCorte - p.baseInversion;
+  var pct = a_ref.pctInversor || 50;
+
+  // LÓGICA CORRECTA:
+  // Ganancia total = valorCorte - baseInversion
+  // Campesino: 50% de la ganancia en efectivo
+  // Yo: 50% de la ganancia → se suma a mi capital
+  // Mi nueva base = baseInversion + (utilidad * pct/100)
+  // El animal sigue en la finca, Período 2 arranca desde nuevaBase
+  var miGanancia = utilidad * (pct / 100);
+  var gananciasCampesino = Math.max(0, utilidad * (1 - pct / 100));
+  var nuevaBase = p.baseInversion + miGanancia; // CORRECTO — no valorCorte
+
+  var animales = DB.animales;
+  var a = animales.find(function(x){ return x.id === currentAnimalId; });
   if (!a.periodos) a.periodos = [];
   a.periodos.push({
     num: p.num, fechaCorte: fecha, pesoCorte: peso, precioKgCorte: precioKg,
-    valorCorte, baseInversionPeriodo: p.baseInversion,
-    utilidadTotal: utilidad, utilidadSocio: utilidad * (1 - pct / 100),
-    utilidadInversor: utilidad * (pct / 100), socioFormaPago: forma, formaPago: forma
+    valorCorte: valorCorte, baseInversionPeriodo: p.baseInversion,
+    utilidadTotal: utilidad,
+    utilidadSocio: gananciasCampesino,
+    utilidadInversor: miGanancia,
+    socioFormaPago: forma, formaPago: forma,
+    nuevaBase: nuevaBase
   });
+
   // Registrar pesaje al corte
   if (!a.pesajes) a.pesajes = [];
-  var fechaCorte = document.getElementById('mc-fecha').value;
-  if (!a.pesajes.find(function(ps){ return ps.fecha === fechaCorte && ps.peso === peso; })) {
-    a.pesajes.push({ fecha: fechaCorte, peso: peso, obs: 'Pesaje al corte — Período ' + p.num });
+  if (!a.pesajes.find(function(ps){ return ps.fecha === fecha && ps.peso === peso; })) {
+    a.pesajes.push({ fecha: fecha, peso: peso, obs: 'Pesaje al corte — Período ' + p.num });
     a.pesajes.sort(function(x,y){ return x.fecha.localeCompare(y.fecha); });
   }
+
+  // Nueva base para Período siguiente = baseInversion + miGanancia
+  a.baseInversion = nuevaBase;
+  if (!a.periodoBases) a.periodoBases = [];
+  a.periodoBases.push({ periodo: p.num + 1, base: nuevaBase, fecha: fecha });
+
   DB.animales = animales;
   closeModal('modal-corte');
   renderFicha(currentAnimalId);
-  alert(`✅ Corte registrado. Nuevo período ${p.num + 1} comienza desde ${fmt$(valorCorte)}`);
-}
-
-// ============ LIQUIDACIÓN ============
-function renderLiquidacion(id) {
-  const a = DB.animales.find(x => x.id === id);
-  if (!a) return;
-  const p = periodoActual(a);
-  const pesoAct = ultimoPeso(a);
-  document.getElementById('liquidacion-contenido').innerHTML = `
-    <div class="section-header">
-      <div><h1 class="section-title">Calculadora — ${a.nombre || a.chapeta}</h1><p class="section-sub">Período ${p.num} · Base ${fmt$(p.baseInversion)}</p></div>
-    </div>
-    <div class="card">
-      <div class="form-grid">
-        <div class="form-group"><label class="form-label">Peso estimado a liquidar (kg)</label><input class="form-input" id="liq-peso" type="number" value="${pesoAct}" oninput="calcLiq('${id}')"></div>
-        <div class="form-group"><label class="form-label">Precio por kg ($)</label><input class="form-input" id="liq-precio-kg" type="number" placeholder="9500" oninput="calcLiq('${id}')"></div>
-        <div class="form-group"><label class="form-label">Costos adicionales ($)</label><input class="form-input" id="liq-extras" type="number" value="0" oninput="calcLiq('${id}')"></div>
-      </div>
-      <div class="result-box" id="liq-resultado"><p style="color:var(--texto-light);font-size:13px;text-align:center;padding:10px">Ingresa el precio por kg para calcular</p></div>
-    </div>
-    <div class="alert alert-info" style="font-size:12px">Esta es una <strong>proyección</strong>. Para liquidar oficialmente usa el botón "Liquidar animal" en la ficha.</div>
-  `;
+  renderDashboard();
+  alert(
+    'Corte P' + (p.num+1) + ' — Campesino: $' + gananciasCampesino.toLocaleString('es-CO') + ' | Tu ganancia reinvertida: $' + miGanancia.toLocaleString('es-CO') + ' | Nueva base: $' + nuevaBase.toLocaleString('es-CO')
+  );
 }
 
 function calcLiq(id) {
@@ -2209,50 +2284,47 @@ function previewFichaMedia(input, tipo) {
 
 function renderFichaFotos(a) {
   var fotos = a.fotos || [];
+  var limite = 8;
   var html = '<div class="card" style="margin-top:14px" data-fotos="1">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-  html += '<p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin:0">Fotos y videos (' + fotos.length + ')</p>';
-  html += '</div>';
+  html += '<p style="font-size:13px;font-weight:500;margin:0 0 14px;text-align:center">Fotos y videos (' + fotos.length + '/' + limite + ')</p>';
 
-  // Upload buttons
-  html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
-  html += '<label style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:1.5px dashed var(--borde);border-radius:var(--r-sm);cursor:pointer;flex:1;text-align:center">';
-  html += '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
-  html += '<span style="font-size:11px;color:var(--texto-light)">Tomar foto</span>';
-  html += '<input type="file" accept="image/*" capture="environment" style="display:none" data-animalid="' + a.id + '" onchange="_fSF(this)"  data-tipo="foto">';
-  html += '</label>';
-  html += '<label style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:1.5px dashed var(--borde);border-radius:var(--r-sm);cursor:pointer;flex:1;text-align:center">';
-  html += '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>';
-  html += '<span style="font-size:11px;color:var(--texto-light)">Grabar video</span>';
-  html += '<input type="file" accept="video/*" capture="environment" style="display:none" data-animalid="' + a.id + '" onchange="_fSF(this)" data-tipo="video">';
-  html += '</label>';
-  html += '<label style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:1.5px dashed var(--borde);border-radius:var(--r-sm);cursor:pointer;flex:1;text-align:center">';
-  html += '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><line x1="21" y1="15" x2="16" y2="10"/><line x1="5" y1="21" x2="16" y2="10"/></svg>';
-  html += '<span style="font-size:11px;color:var(--texto-light)">De galería</span>';
-  html += '<input type="file" accept="image/*,video/*" style="display:none" data-animalid="' + a.id + '" onchange="_fSF(this)"  data-tipo="foto">';
-  html += '</label>';
-  html += '</div>';
-
-  // Thumbnails
+  // Thumbnails centered - 180px
   if (fotos.length) {
-    html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:14px">';
     fotos.forEach(function(f) {
       var isImg = f.dataUrl && f.dataUrl.startsWith('data:image');
       var hasDrive = !!f.driveLink;
-      html += '<div style="position:relative">';
+      html += '<div style="position:relative;width:180px;height:180px;border-radius:10px;overflow:hidden;border:0.5px solid var(--borde);flex-shrink:0;cursor:pointer" data-fid="' + f.id + '" data-aid="' + a.id + '" onclick="_vFG(this)">';
       if (isImg) {
-        html += '<img src="' + f.dataUrl + '" style="width:80px;height:80px;object-fit:cover;border-radius:var(--r-sm);border:1px solid var(--borde);cursor:pointer" data-fid="' + f.id + '" data-aid="' + a.id + '" onclick="_vFG(this)">';
+        html += '<img src="' + f.dataUrl + '" style="width:180px;height:180px;object-fit:cover">';
       } else {
-        html += '<div style="width:80px;height:80px;background:var(--crema);border-radius:var(--r-sm);border:1px solid var(--borde);display:flex;align-items:center;justify-content:center;cursor:pointer" data-fid="' + f.id + '" data-aid="' + a.id + '" onclick="_vFG(this)"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>';
+        html += '<div style="width:180px;height:180px;background:var(--crema);display:flex;align-items:center;justify-content:center"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>';
       }
-      html += '<div style="position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.55);color:white;font-size:9px;padding:1px 4px;border-radius:2px">' + (f.tipo||'foto') + '</div>';
-      if (hasDrive) {
-        html += '<div style="position:absolute;top:3px;right:3px;background:rgba(66,133,244,.85);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center" title="En Drive">✓</div>';
-      }
+      html += '<div style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.5);color:white;font-size:10px;padding:2px 7px;border-radius:3px">' + (f.tipo||'foto') + '</div>';
+      if (hasDrive) html += '<div style="position:absolute;top:6px;right:6px;background:rgba(66,133,244,.9);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px" title="En Drive">✓</div>';
+      html += '<button data-fid="' + f.id + '" data-aid="' + a.id + '" onclick="event.stopPropagation();_elimFoto(this)" style="position:absolute;bottom:6px;right:6px;background:rgba(193,18,31,.85);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;font-size:15px" aria-label="Eliminar foto">×</button>';
       html += '</div>';
     });
     html += '</div>';
   }
+
+  // Upload buttons small - at bottom - only if under limit
+  if (fotos.length < limite) {
+    html += '<div style="display:flex;gap:6px;justify-content:center">';
+    html += '<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:0.5px solid var(--borde);border-radius:6px;cursor:pointer;font-size:12px;color:var(--texto-med);background:var(--crema)">';
+    html += '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Foto';
+    html += '<input type="file" accept="image/*" capture="environment" style="display:none" data-animalid="' + a.id + '" data-tipo="foto" onchange="_fSF(this)"></label>';
+    html += '<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:0.5px solid var(--borde);border-radius:6px;cursor:pointer;font-size:12px;color:var(--texto-med);background:var(--crema)">';
+    html += '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Video';
+    html += '<input type="file" accept="video/*" capture="environment" style="display:none" data-animalid="' + a.id + '" data-tipo="video" onchange="_fSF(this)"></label>';
+    html += '<label style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border:0.5px solid var(--borde);border-radius:6px;cursor:pointer;font-size:12px;color:var(--texto-med);background:var(--crema)">';
+    html += '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><line x1="21" y1="15" x2="16" y2="10"/><line x1="5" y1="21" x2="16" y2="10"/></svg> Galería';
+    html += '<input type="file" accept="image/*,video/*" style="display:none" data-animalid="' + a.id + '" data-tipo="foto" onchange="_fSF(this)"></label>';
+    html += '</div>';
+  } else {
+    html += '<p style="font-size:12px;color:var(--texto-light);text-align:center;margin:0">Límite de ' + limite + ' fotos alcanzado — elimina una para agregar nueva</p>';
+  }
+
   html += '</div>';
   return html;
 }
@@ -2346,87 +2418,70 @@ function guardarGasto() {
 
 // ============ HISTORIAL LIQUIDACIONES ============
 function renderHistorialLiq() {
-  var vendidos = DB.animales.filter(function(a){ return a.estado === 'vendido' && a.liquidacion; });
-  var totalVenta = 0, totalUtilidad = 0, totalSocio = 0, totalInv = 0;
-  vendidos.forEach(function(a) {
-    totalVenta += a.liquidacion.venta || 0;
-    totalUtilidad += a.liquidacion.utilidadTotal || 0;
-    totalSocio += a.liquidacion.utilidadSocio || 0;
-    totalInv += a.liquidacion.inversorRecibe || (a.liquidacion.totalInvertido + (a.liquidacion.utilidadInversor||0));
-  });
+  var anio = document.getElementById('hist-filtro-anio') ? document.getElementById('hist-filtro-anio').value : '';
+  var tipo = document.getElementById('hist-filtro-tipo') ? document.getElementById('hist-filtro-tipo').value : '';
+  var todos = DB.animales.filter(function(a){ return (a.estado === 'vendido' || a.estado === 'baja') && a.liquidacion; });
+  if (anio) todos = todos.filter(function(a){ return a.liquidacion.fecha && a.liquidacion.fecha.startsWith(anio); });
+  if (tipo === 'venta') todos = todos.filter(function(a){ return a.estado === 'vendido'; });
+  if (tipo === 'baja') todos = todos.filter(function(a){ return a.estado === 'baja'; });
+  todos.sort(function(a,b){ return b.liquidacion.fecha.localeCompare(a.liquidacion.fecha); });
+
   var resEl = document.getElementById('historial-liq-resumen');
-  if (resEl) {
-    resEl.innerHTML = vendidos.length ?
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">' +
-        '<div class="metric-card"><div class="metric-label">Animales vendidos</div><div class="metric-val green">' + vendidos.length + '</div></div>' +
-        '<div class="metric-card"><div class="metric-label">Venta total histórica</div><div class="metric-val amber">' + fmt$(totalVenta) + '</div></div>' +
-        '<div class="metric-card"><div class="metric-label">Utilidad total</div><div class="metric-val green">' + fmt$(totalUtilidad) + '</div></div>' +
-        '<div class="metric-card"><div class="metric-label">Socio finca cobró</div><div class="metric-val green">' + fmt$(totalSocio) + '</div></div>' +
-      '</div>' : '';
-  }
-  var tbody = document.getElementById('historial-liq-tbody');
-  if (!tbody) return;
-  if (!vendidos.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto-light);padding:24px">Sin animales vendidos aún</td></tr>';
+  var listEl = document.getElementById('historial-liq-lista');
+  if (!resEl || !listEl) return;
+
+  if (!todos.length) {
+    resEl.innerHTML = '';
+    listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--texto-light)">Sin registros' + (anio||tipo ? ' para este filtro' : '') + '</div>';
     return;
   }
-  tbody.innerHTML = vendidos.slice().sort(function(a,b){ return (b.liquidacion.fecha||'').localeCompare(a.liquidacion.fecha||''); }).map(function(a) {
+
+  var totalVentas = todos.filter(function(a){ return a.estado === 'vendido'; }).reduce(function(s,a){ return s + (a.liquidacion.venta||0); }, 0);
+  var totalGanancia = todos.filter(function(a){ return a.estado === 'vendido'; }).reduce(function(s,a){ return s + (a.liquidacion.utilidadTotal||0); }, 0);
+  var totalBajas = todos.filter(function(a){ return a.estado === 'baja'; }).reduce(function(s,a){ return s + (a.liquidacion.totalInvertido||0); }, 0);
+
+  resEl.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:4px">' +
+      '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Total ventas</div><div style="font-size:16px;font-family:Playfair Display,serif;color:var(--verde)">' + fmt$(totalVentas) + '</div></div>' +
+      '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Ganancia realizada</div><div style="font-size:16px;font-family:Playfair Display,serif;color:' + (totalGanancia>=0?'var(--verde)':'var(--rojo)') + '">' + fmt$(totalGanancia) + '</div></div>' +
+      (totalBajas > 0 ? '<div style="background:#fff3e0;border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:#e65100;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Capital en bajas</div><div style="font-size:16px;font-family:Playfair Display,serif;color:#e65100">-' + fmt$(totalBajas) + '</div></div>' : '') +
+      '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Animales</div><div style="font-size:16px;font-family:Playfair Display,serif">' + todos.length + '</div></div>' +
+    '</div>';
+
+  listEl.innerHTML = todos.map(function(a) {
     var liq = a.liquidacion;
-    var utilColor = (liq.utilidadTotal||0) >= 0 ? 'var(--verde)' : 'var(--rojo)';
-    var invRec = liq.inversorRecibe || ((liq.totalInvertido||0) + (liq.utilidadInversor||0));
-    return '<tr>' +
-      '<td><span class="badge badge-gray">#' + a.chapeta + '</span></td>' +
-      '<td style="font-weight:500">' + (a.nombre||'—') + '</td>' +
-      '<td><span class="badge ' + (a.finca==='Finca Rigo'?'badge-blue':'badge-green') + '">' + (a.finca||'—') + '</span></td>' +
-      '<td>' + (liq.fecha||'—') + '</td>' +
-      '<td>' + fmtKg(liq.pesoFinal||0) + '</td>' +
-      '<td>' + fmt$(liq.venta||0) + '</td>' +
-      '<td style="color:' + utilColor + ';font-weight:500">' + fmt$(liq.utilidadTotal||0) + '</td>' +
-      '<td style="color:var(--azul)">' + fmt$(invRec) + '</td>' +
-      '<td style="color:var(--verde)">' + fmt$(Math.max(0,liq.utilidadSocio||0)) + '</td>' +
-    '</tr>';
+    var esBaja = a.estado === 'baja';
+    var bgCard = esBaja ? 'background:#fff3e0;border-left:3px solid #e65100' : 'border-left:3px solid var(--verde-claro)';
+    var ganancia = liq.utilidadTotal || 0;
+    var miCapital = liq.inversorRecibe || (liq.totalInvertido + liq.utilidadInversor);
+    var campesino = Math.max(0, liq.utilidadSocio || 0);
+    var roi = liq.totalInvertido > 0 ? (ganancia/liq.totalInvertido*100).toFixed(1) : 0;
+    return '<div class="card" style="margin-bottom:12px;' + bgCard + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
+        '<div>' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">' +
+            '<span class="badge badge-gray" style="font-size:11px">#' + a.chapeta + '</span>' +
+            '<span style="font-size:14px;font-weight:500">' + (a.nombre||'—') + '</span>' +
+            (esBaja ? '<span style="background:#fff3e0;color:#e65100;font-size:11px;padding:2px 8px;border-radius:20px">💀 Baja</span>' : '<span style="background:#D8F3DC;color:#2D6A4F;font-size:11px;padding:2px 8px;border-radius:20px">✅ Vendido</span>') +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--texto-light)">' + liq.fecha + (esBaja ? ' · ' + (a.baja ? a.baja.causa : '') : '') + '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          (esBaja ? '<div style="font-size:14px;font-weight:500;color:#e65100">-' + fmt$(liq.totalInvertido) + '</div><div style="font-size:12px;color:#e65100">Capital perdido</div>' :
+            '<div style="font-size:14px;font-weight:500">' + fmt$(liq.venta) + '</div><div style="font-size:12px;color:var(--texto-light)">Venta total</div>') +
+        '</div>' +
+      '</div>' +
+      (!esBaja ? '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">Ganancia</div><div style="font-size:13px;font-weight:500;color:' + (ganancia>=0?'var(--verde)':'var(--rojo)') + '">' + fmt$(ganancia) + '</div></div>' +
+        '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--verde);margin-bottom:2px">Mi capital nuevo</div><div style="font-size:13px;font-weight:500;color:var(--verde)">' + fmt$(miCapital) + '</div></div>' +
+        '<div style="background:#FFF8E1;border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--amber-dark);margin-bottom:2px">Campesino cobró</div><div style="font-size:13px;font-weight:500;color:var(--amber-dark)">' + fmt$(campesino) + '</div></div>' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:8px"><div style="font-size:10px;color:var(--texto-light);margin-bottom:2px">ROI</div><div style="font-size:13px;font-weight:500;color:' + (ganancia>=0?'var(--verde)':'var(--rojo)') + '">' + roi + '%</div></div>' +
+      '</div>' : '') +
+    '</div>';
   }).join('');
 }
 
-// ============ BACKUP / EXPORT / IMPORT ============
-function exportarDatos() {
-  var data = {
-    version: '1.0',
-    fecha: today(),
-    animales: DB.animales,
-    soportes: DB.soportes,
-    calcHistorial: JSON.parse(localStorage.getItem('gp_calc_hist') || '[]')
-  };
-  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'ganaderia-pro-backup-' + today() + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
-function importarDatos(input) {
-  if (!input.files || !input.files[0]) return;
-  if (!confirm('Esto reemplazará TODOS los datos actuales. ¿Estás seguro?')) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var data = JSON.parse(e.target.result);
-      if (!data.animales) { alert('Archivo inválido — no es un backup de GanaderíaPro'); return; }
-      DB.animales = data.animales;
-      if (data.soportes) DB.soportes = data.soportes;
-      if (data.calcHistorial) localStorage.setItem('gp_calc_hist', JSON.stringify(data.calcHistorial));
-      renderAnimalNav();
-      renderDashboard();
-      renderBackupStats();
-      alert('✅ Datos restaurados correctamente.\n' + data.animales.length + ' animales cargados.');
-    } catch(err) {
-      alert('Error al leer el archivo: ' + err.message);
-    }
-  };
-  reader.readAsText(input.files[0]);
-}
 
 function renderBackupStats() {
   var el = document.getElementById('backup-stats');
@@ -3333,80 +3388,7 @@ function sanitizarTexto(str) {
 var _pinIntentos = 0;
 var _pinBloqueadoHasta = 0;
 
-function pinVerificarSeguro(inputPin) {
-  var ahora = Date.now();
-  if (ahora < _pinBloqueadoHasta) {
-    var segundos = Math.ceil((_pinBloqueadoHasta - ahora) / 1000);
-    document.getElementById('pin-msg').textContent = 'Bloqueado ' + segundos + 's — demasiados intentos';
-    pinActual = '';
-    pinActualizarDots();
-    return;
-  }
-  var pin = localStorage.getItem(PIN_KEY);
-  if (!pin) {
-    localStorage.setItem(PIN_KEY, inputPin);
-    _pinIntentos = 0;
-    SecureDB.setPin(inputPin);
-    document.getElementById('pin-msg').textContent = '✅ PIN configurado';
-    setTimeout(function() {
-      document.getElementById('pin-screen').style.display = 'none';
-      pinActual = '';
-    }, 800);
-    return;
-  }
-  if (inputPin === pin) {
-    _pinIntentos = 0;
-    SecureDB.setPin(inputPin);
-    document.getElementById('pin-screen').style.display = 'none';
-    pinActual = '';
-  } else {
-    _pinIntentos++;
-    pinActual = '';
-    pinActualizarDots();
-    if (_pinIntentos >= 5) {
-      _pinBloqueadoHasta = Date.now() + 30000; // 30s block
-      document.getElementById('pin-msg').textContent = '🔒 5 intentos fallidos — bloqueado 30s';
-    } else {
-      document.getElementById('pin-msg').textContent = 'PIN incorrecto (' + _pinIntentos + '/5)';
-    }
-    setTimeout(function() {
-      if (document.getElementById('pin-msg'))
-        document.getElementById('pin-msg').textContent = '';
-    }, 2000);
-  }
-}
 
-
-function pinCambiar() {
-  localStorage.removeItem(PIN_KEY);
-  var screen = document.getElementById('pin-screen');
-  if (screen) {
-    document.getElementById('pin-msg').textContent = 'Ingresa tu nuevo PIN';
-    screen.style.display = 'flex';
-    pinActual = '';
-    pinActualizarDots();
-  }
-}
-
-// ============ SERVICE WORKER ============
-function registrarSW() {
-  if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.protocol === 'https:')) {
-    var swCode = "const CACHE='ganaderia-mangla-v1';self.addEventListener('install',function(e){self.skipWaiting();});self.addEventListener('fetch',function(e){e.respondWith(caches.match(e.request).then(function(r){return r||fetch(e.request);}));});";
-    var blob = new Blob([swCode], { type: 'application/javascript' });
-    var swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl).catch(function(){});
-  }
-}
-
-// ============ INVENTARIO — VALOR ACTUAL ============
-function getPrecioAnimal(a, prefijo) {
-  prefijo = prefijo || '';
-  var esTernero = a.madre && a.madre !== '';
-  var sexo = a.sexo || 'macho';
-  if (esTernero) return parseFloat(document.getElementById(prefijo + 'precio-ternero') ? document.getElementById(prefijo + 'precio-ternero').value : 0) || 0;
-  if (sexo === 'hembra') return parseFloat(document.getElementById(prefijo + 'precio-hembra') ? document.getElementById(prefijo + 'precio-hembra').value : 0) || 0;
-  return parseFloat(document.getElementById(prefijo + 'precio-macho') ? document.getElementById(prefijo + 'precio-macho').value : 0) || 0;
-}
 
 function buildProyIndividualHtml(activos) {
   return '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:14px">' +
@@ -3610,6 +3592,7 @@ function renderDecisionVenta() {
     var isSel = !!sel;
     var bg = isSel ? 'background:var(--verde-pale);border-left:3px solid var(--verde)' : 'border-left:3px solid transparent';
     var cat = (a.madre && a.madre !== '') ? 'T' : (a.sexo === 'hembra' ? 'H' : 'N');
+    var catNombre = (a.madre && a.madre !== '') ? 'Ternero' : (a.sexo === 'hembra' ? 'Hembra' : 'Novillo');
     var catColor = cat === 'H' ? 'badge-green' : cat === 'T' ? 'badge-amber' : 'badge-gray';
     var roiColor = item.roi >= 15 ? 'var(--verde)' : item.roi >= 5 ? 'var(--amber-dark)' : 'var(--rojo)';
     var semaforo = item.roi >= 15 ? '🟢' : item.roi >= 5 ? '🟡' : '🔴';
@@ -3650,10 +3633,10 @@ function renderDecisionVenta() {
         '<div style="flex:1;min-width:0">' +
           '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">' +
             '<span class="badge badge-gray" style="font-size:10px">#' + a.chapeta + '</span>' +
-            '<span class="badge ' + catColor + '" style="font-size:9px;padding:1px 5px">' + cat + '</span>' +
+            '<span class="badge ' + catColor + '" style="font-size:10px;padding:2px 7px">' + catNombre + '</span>' +
             '<span style="font-size:13px;font-weight:500">' + (a.nombre||'—') + '</span>' +
           '</div>' +
-          '<div style="font-size:12px;color:var(--texto-light)">' + fmtKg(item.pesoAct) + ' · Base ' + fmt$(p.baseInversion) + '</div>' +
+          '<div style="font-size:12px;color:var(--texto-light)">' + fmtKg(item.pesoAct) + ' · Base ' + fmt$(p.baseInversion) + (a.precioKgCompra ? ' · Compra ' + fmt$(a.precioKgCompra) + '/kg' : '') + '</div>' +
         '</div>' +
         (item.precio > 0 ?
           '<div style="text-align:right;flex-shrink:0">' +
@@ -3735,70 +3718,193 @@ function dvCalcularAnimal(id) {
     '</div>';
 }
 
+// ============ VENDER — ESCENARIO ============
+var dvEscenario = 'venta'; // 'venta' o 'corte'
+
+function venderSetEscenario(tipo) {
+  dvEscenario = tipo;
+  dvSeleccionados = {};
+
+  var btnCorte = document.getElementById('btn-escenario-corte');
+  var btnVenta = document.getElementById('btn-escenario-venta');
+  var btnEjecutar = document.getElementById('btn-ejecutar-vender');
+
+  if (btnCorte) {
+    btnCorte.style.borderColor = tipo === 'corte' ? 'var(--verde)' : 'var(--borde)';
+    btnCorte.style.background = tipo === 'corte' ? 'var(--verde-pale)' : '';
+  }
+  if (btnVenta) {
+    btnVenta.style.borderColor = tipo === 'venta' ? 'var(--verde)' : 'var(--borde)';
+    btnVenta.style.background = tipo === 'venta' ? 'var(--verde-pale)' : '';
+  }
+
+  var titulo = document.getElementById('dv-resumen-titulo');
+  if (titulo) titulo.textContent = tipo === 'corte' ? 'Simulación — Corte de cuentas' : 'Simulación — Liquidación final';
+  if (btnEjecutar) btnEjecutar.textContent = tipo === 'corte' ? '🔄 Confirmar corte de cuentas' : '💰 Confirmar liquidación final';
+
+  renderDecisionVenta();
+}
+
+function dvGetDecision() {
+  var radios = document.querySelectorAll('input[name="dv-decision"]');
+  for (var i = 0; i < radios.length; i++) {
+    if (radios[i].checked) return radios[i].value;
+  }
+  return 'reinvertir';
+}
+
 function dvActualizarResumen() {
   var ids = Object.keys(dvSeleccionados);
   var resumenEl = document.getElementById('dv-resumen');
   var resumenCont = document.getElementById('dv-resumen-contenido');
+  var decisionCorteEl = document.getElementById('dv-decision-corte');
   if (!resumenEl || !resumenCont) return;
   if (!ids.length) { resumenEl.style.display = 'none'; return; }
 
-  var totalVenta = 0, totalGanancia = 0, totalCapitalRecup = 0;
-  var totalMiGanancia = 0, totalCampesino = 0, totalCapitalAntes = 0;
+  var totalVenta = 0, totalGanancia = 0, totalCapitalBase = 0;
+  var totalMiGanancia = 0, totalCampesino = 0;
+  var todosValidos = true;
+
   ids.forEach(function(id) {
     var sel = dvSeleccionados[id];
     var a = DB.animales.find(function(x){ return x.id === id; });
-    if (!a || !sel || !sel.precioKg) return;
+    if (!a || !sel || !sel.precioKg) { todosValidos = false; return; }
     var p = periodoActual(a);
     var venta = sel.peso * sel.precioKg;
     var ganancia = venta - p.baseInversion;
-    var miGanancia = Math.max(0, ganancia * 0.5);
-    var campesino = Math.max(0, ganancia * 0.5);
     totalVenta += venta;
     totalGanancia += ganancia;
-    totalCapitalRecup += p.baseInversion;
-    totalMiGanancia += miGanancia;
-    totalCampesino += campesino;
-    totalCapitalAntes += p.baseInversion;
+    totalCapitalBase += p.baseInversion; // capital base SIEMPRE se recupera primero
+    totalMiGanancia += ganancia * 0.5;
+    totalCampesino += Math.max(0, ganancia * 0.5);
   });
 
-  var miCapitalNuevo = totalCapitalRecup + totalMiGanancia;
-  var capAcumActual = getCapitalAcumulado();
-  var capNuevo = capAcumActual + miCapitalNuevo;
+  if (!todosValidos) { resumenEl.style.display = 'none'; return; }
+
+  var decision = dvGetDecision();
+  var esCorte = dvEscenario === 'corte';
   var colorGan = totalGanancia >= 0 ? 'var(--verde)' : 'var(--rojo)';
-  var roi = totalCapitalAntes > 0 ? (totalGanancia/totalCapitalAntes*100).toFixed(1) : 0;
+  var roi = totalCapitalBase > 0 ? (totalGanancia/totalCapitalBase*100).toFixed(1) : 0;
+
+  // Show/hide decision panel for corte
+  if (decisionCorteEl) decisionCorteEl.style.display = esCorte ? 'block' : 'none';
+
+  // Calculate what I get based on scenario and decision
+  var miTotal, miLabel, miSub;
+  if (esCorte) {
+    if (decision === 'reinvertir') {
+      miTotal = totalCapitalBase + totalMiGanancia;
+      miLabel = 'Tu nueva base (reinviertes)';
+      miSub = 'Capital base + tu 50% ganancia';
+    } else {
+      miTotal = totalMiGanancia;
+      miLabel = 'Cobras en efectivo';
+      miSub = 'Tu 50% de ganancia · capital queda igual';
+    }
+  } else {
+    // Liquidación: siempre recuperas capital + tu ganancia
+    miTotal = totalCapitalBase + totalMiGanancia;
+    miLabel = 'Tu total para reinvertir';
+    miSub = '$' + (totalCapitalBase/1e6).toFixed(2) + 'M capital + $' + (totalMiGanancia/1e6).toFixed(2) + 'M ganancia';
+  }
 
   resumenEl.style.display = 'block';
   resumenCont.innerHTML =
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px">' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">' +
       '<div style="background:var(--crema);border-radius:var(--r-sm);padding:12px">' +
-        '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">' + ids.length + ' animal(es)</div>' +
+        '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">' + ids.length + ' animal(es) · ' + (esCorte ? 'Corte' : 'Venta') + '</div>' +
         '<div style="font-size:18px;font-family:Playfair Display,serif">' + fmt$(totalVenta) + '</div>' +
-        '<div style="font-size:11px;color:var(--texto-light)">Venta total</div>' +
+        '<div style="font-size:11px;color:var(--texto-light)">' + (esCorte ? 'Valor al corte' : 'Venta total') + '</div>' +
       '</div>' +
       '<div style="background:var(--crema);border-radius:var(--r-sm);padding:12px">' +
-        '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Capital recuperado</div>' +
-        '<div style="font-size:18px;font-family:Playfair Display,serif">' + fmt$(totalCapitalRecup) + '</div>' +
-        '<div style="font-size:11px;color:var(--texto-light)">Se reinvierte</div>' +
+        '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Capital base (siempre tuyo)</div>' +
+        '<div style="font-size:18px;font-family:Playfair Display,serif">' + fmt$(totalCapitalBase) + '</div>' +
+        '<div style="font-size:11px;color:var(--texto-light)">Se recupera primero · 100% tuyo</div>' +
       '</div>' +
       '<div style="background:var(--crema);border-radius:var(--r-sm);padding:12px">' +
-        '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Ganancia total</div>' +
+        '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Ganancia total · ROI ' + roi + '%</div>' +
         '<div style="font-size:18px;font-family:Playfair Display,serif;color:' + colorGan + '">' + fmt$(totalGanancia) + '</div>' +
-        '<div style="font-size:11px;color:var(--texto-light)">ROI: ' + roi + '%</div>' +
+        '<div style="font-size:11px;color:var(--texto-light)">Se divide 50/50</div>' +
       '</div>' +
       '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:12px">' +
-        '<div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Mi capital crece a</div>' +
-        '<div style="font-size:18px;font-family:Playfair Display,serif;color:var(--verde)">' + fmt$(miCapitalNuevo) + '</div>' +
-        '<div style="font-size:11px;color:var(--verde)">Capital + ' + fmt$(totalMiGanancia) + ' ganancia mía</div>' +
+        '<div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">' + miLabel + '</div>' +
+        '<div style="font-size:18px;font-family:Playfair Display,serif;color:var(--verde)">' + fmt$(miTotal) + '</div>' +
+        '<div style="font-size:11px;color:var(--verde)">' + miSub + '</div>' +
       '</div>' +
       '<div style="background:#FFF8E1;border-radius:var(--r-sm);padding:12px">' +
-        '<div style="font-size:10px;color:var(--amber-dark);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Campesino recibe</div>' +
+        '<div style="font-size:10px;color:var(--amber-dark);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Campesino cobra</div>' +
         '<div style="font-size:18px;font-family:Playfair Display,serif;color:var(--amber-dark)">' + fmt$(totalCampesino) + '</div>' +
-        '<div style="font-size:11px;color:var(--amber-dark)">50% ganancia · efectivo</div>' +
+        '<div style="font-size:11px;color:var(--amber-dark)">50% ganancia · efectivo · no toca capital</div>' +
       '</div>' +
-    '</div>' +
-    '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--azul)">' +
-      'Capital acumulado disponible después de estas ventas: <strong>' + fmt$(capNuevo) + '</strong>' +
     '</div>';
+}
+
+function dvEjecutarAccion() {
+  var ids = Object.keys(dvSeleccionados);
+  if (!ids.length) { alert('Selecciona al menos un animal'); return; }
+  var sinPrecio = ids.filter(function(id){ return !dvSeleccionados[id].precioKg; });
+  if (sinPrecio.length) { alert('Ingresa el precio por kg de todos los animales'); return; }
+
+  if (dvEscenario === 'corte') {
+    dvEjecutarCorte();
+  } else {
+    dvEjecutarVentas();
+  }
+}
+
+function dvEjecutarCorte() {
+  var ids = Object.keys(dvSeleccionados);
+  var decision = dvGetDecision();
+  if (!confirm('Confirmar CORTE DE CUENTAS de ' + ids.length + ' animal(es)? Los animales siguen en la finca.')) return;
+
+  var animales = DB.animales;
+  var totalCampesino = 0;
+  var totalMiGanancia = 0;
+
+  ids.forEach(function(id) {
+    var sel = dvSeleccionados[id];
+    var a = animales.find(function(x){ return x.id === id; });
+    if (!a || !sel) return;
+    var p = periodoActual(a);
+    var valorCorte = sel.peso * sel.precioKg;
+    var utilidad = valorCorte - p.baseInversion;
+    var miGanancia = utilidad * 0.5;
+    var campesino = Math.max(0, utilidad * 0.5);
+    var nuevaBase = decision === 'reinvertir' ? p.baseInversion + miGanancia : p.baseInversion;
+
+    if (!a.periodos) a.periodos = [];
+    a.periodos.push({
+      num: p.num, fechaCorte: sel.fecha || today(),
+      pesoCorte: sel.peso, precioKgCorte: sel.precioKg,
+      valorCorte: valorCorte, baseInversionPeriodo: p.baseInversion,
+      utilidadTotal: utilidad, utilidadSocio: campesino,
+      utilidadInversor: miGanancia, socioFormaPago: 'efectivo',
+      nuevaBase: nuevaBase, decisionInversor: decision
+    });
+
+    // Register pesaje
+    if (!a.pesajes) a.pesajes = [];
+    a.pesajes.push({ fecha: sel.fecha || today(), peso: sel.peso, obs: 'Corte de cuentas P' + p.num });
+    a.pesajes.sort(function(x,y){ return x.fecha.localeCompare(y.fecha); });
+
+    totalCampesino += campesino;
+    totalMiGanancia += miGanancia;
+  });
+
+  DB.animales = animales;
+  dvSeleccionados = {};
+  renderAnimalNav();
+  renderDashboard();
+  renderDecisionVenta();
+
+  var msg = 'Corte de cuentas registrado.';
+  msg += ' Campesino a pagar: ' + fmt$(totalCampesino) + ' en efectivo.';
+  if (decision === 'reinvertir') {
+    msg += ' Tu ganancia ' + fmt$(totalMiGanancia) + ' queda reinvertida como nueva base.';
+  } else {
+    msg += ' Tu ganancia ' + fmt$(totalMiGanancia) + ' la cobras en efectivo.';
+  }
+  alert(msg);
 }
 
 function dvSeleccionarTodos() {
@@ -4235,9 +4341,14 @@ function renderVisitaFinca() {
     var bajoProm = promGan > 0 && ganancias[idx] < promGan * 0.7;
     var rowBg = bajoProm ? 'background:#FFFBEB' : '';
     var pesoGuardado = vfPesosTemp[a.id] || '';
+    var pesoEsperado = getPesoProyectado(a);
     var diff = pesoGuardado ? (parseFloat(pesoGuardado) - pesoAnt) : null;
+    var diffVsEsperado = pesoGuardado ? (parseFloat(pesoGuardado) - pesoEsperado) : null;
     var diffColor = diff !== null ? (diff >= 0 ? 'color:var(--verde)' : 'color:var(--rojo)') : '';
+    var diffEspColor = diffVsEsperado !== null ? (diffVsEsperado >= -10 ? 'color:var(--verde)' : diffVsEsperado >= -30 ? 'color:#e65100' : 'color:var(--rojo)') : '';
+    var diffEspStr = diffVsEsperado !== null ? ((diffVsEsperado >= 0 ? '+' : '') + fmtKg(diffVsEsperado) + ' vs esperado') : '';
     var cat = (a.madre && a.madre !== '') ? 'T' : (a.sexo === 'hembra' ? 'H' : 'N');
+    var catNombreVf = (a.madre && a.madre !== '') ? 'Ternero' : (a.sexo === 'hembra' ? 'Hembra' : 'Novillo');
     var catColor = cat === 'H' ? 'badge-green' : cat === 'T' ? 'badge-amber' : 'badge-gray';
     var tieneFotos = a.fotos && a.fotos.length;
 
@@ -4245,7 +4356,7 @@ function renderVisitaFinca() {
       '<div style="min-width:100px">' +
         '<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">' +
           '<span class="badge badge-gray" style="font-size:10px">#' + a.chapeta + '</span>' +
-          '<span class="badge ' + catColor + '" style="font-size:9px;padding:1px 5px">' + cat + '</span>' +
+          '<span class="badge ' + catColor + '" style="font-size:10px;padding:2px 7px">' + catNombre + '</span>' +
         '</div>' +
         '<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">' + (a.nombre||'—') + '</div>' +
       '</div>' +
@@ -4540,6 +4651,7 @@ function fichaSubirFoto(input, tipo) {
     var a = animales.find(function(x){ return x.id === animalId; });
     if (!a) return;
     if (!a.fotos) a.fotos = [];
+    if (a.fotos.length >= 8) { alert('Límite de 8 fotos alcanzado. Elimina una para continuar.'); return; }
     var newId = genId();
     a.fotos.push({ id: newId, tipo: tipo, nombre: file.name, dataUrl: dataUrl, fecha: today() });
     DB.animales = animales;
@@ -4646,6 +4758,332 @@ function renderBotonVolver(label, page, animalId) {
     '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>' +
     label + '</button>';
 }
+
+function registrarBaja(id) {
+  var a = DB.animales.find(function(x){ return x.id === id; });
+  if (!a) return;
+  var nombre = a.nombre || '#' + a.chapeta;
+  if (!confirm('Registrar BAJA o MUERTE de ' + nombre + '? Esto registrara el 100% del capital como perdida.')) return;
+  var causa = prompt('Causa de la baja (muerte, enfermedad, robo, etc.):', 'Muerte');
+  if (!causa) return;
+  var fecha = prompt('Fecha de la baja (AAAA-MM-DD):', today());
+  if (!fecha) return;
+  var p = periodoActual(a);
+  var animales = DB.animales;
+  var animal = animales.find(function(x){ return x.id === id; });
+  animal.estado = 'baja';
+  animal.baja = {
+    fecha: fecha, causa: causa,
+    capitalPerdido: p.baseInversion,
+    periodoNum: p.num
+  };
+  // Register as liquidation with 0 sale price for financial tracking
+  animal.liquidacion = {
+    fecha: fecha, pesoFinal: ultimoPeso(animal), precioKg: 0,
+    venta: 0, totalInvertido: p.baseInversion, utilidadTotal: -p.baseInversion,
+    utilidadInversor: -p.baseInversion * ((animal.pctInversor||50)/100),
+    utilidadSocio: 0, inversorRecibe: 0,
+    tipo: 'baja', causa: causa
+  };
+  DB.animales = animales;
+  renderAnimalNav();
+  renderDashboard();
+  showPage('dashboard');
+  alert('Baja registrada. Capital perdido: ' + fmt$(p.baseInversion));
+}
+
+function calcBreakEven() {
+  var inversion = parseFloat(document.getElementById('cc-inversion').value) || 0;
+  var otros = parseFloat(document.getElementById('cc-otros').value) || 0;
+  var peso = parseFloat(document.getElementById('cc-peso').value) || 0;
+  var bel = document.getElementById('cc-breakeven');
+  var belt = document.getElementById('cc-breakeven-text');
+  if (!bel || !belt) return;
+  if (!inversion || !peso) { bel.style.display = 'none'; return; }
+  var totalCosto = inversion + otros;
+  var precioMinKg = totalCosto / peso;
+  bel.style.display = 'flex';
+  belt.innerHTML = '<strong>Precio de equilibrio:</strong> ' + fmt$(Math.ceil(precioMinKg)) + '/kg — por debajo de este precio pierdes dinero. ' +
+    'Para ganar 10%: ' + fmt$(Math.ceil(totalCosto * 1.1 / peso)) + '/kg · Para ganar 20%: ' + fmt$(Math.ceil(totalCosto * 1.2 / peso)) + '/kg';
+}
+
+// ============ FILTROS HISTORIAL ============
+function renderHistorialLiqFiltrado() {
+  var anio = document.getElementById('hist-filtro-anio') ? document.getElementById('hist-filtro-anio').value : '';
+  var tipo = document.getElementById('hist-filtro-tipo') ? document.getElementById('hist-filtro-tipo').value : '';
+  var vendidos = DB.animales.filter(function(a){
+    return (a.estado === 'vendido' || a.estado === 'baja') && a.liquidacion;
+  });
+  if (anio) vendidos = vendidos.filter(function(a){ return a.liquidacion.fecha && a.liquidacion.fecha.startsWith(anio); });
+  if (tipo) vendidos = vendidos.filter(function(a){ return tipo === 'baja' ? a.estado === 'baja' : a.estado === 'vendido'; });
+  return vendidos;
+}
+
+// ============ PESO PROYECTADO ============
+function getPesoProyectado(a) {
+  var pesajes = a.pesajes || [];
+  if (!pesajes.length) return ultimoPeso(a);
+  var gdp = 0; // gramos por día
+  if (pesajes.length >= 2) {
+    var total_gain = 0, total_days = 0;
+    for (var i = 1; i < pesajes.length; i++) {
+      var dias = Math.max(1, (new Date(pesajes[i].fecha) - new Date(pesajes[i-1].fecha)) / 86400000);
+      total_gain += pesajes[i].peso - pesajes[i-1].peso;
+      total_days += dias;
+    }
+    gdp = total_days > 0 ? total_gain / total_days : 0;
+  }
+  if (gdp <= 0) return ultimoPeso(a); // no growth data
+  var ultimo = pesajes[pesajes.length - 1];
+  var diasDesde = Math.max(0, (new Date() - new Date(ultimo.fecha)) / 86400000);
+  return Math.round((ultimoPeso(a) + gdp * diasDesde) * 10) / 10;
+}
+
+// ============ INDICE FRESCURA DATOS ============
+function getFrescuraAnimal(a) {
+  var pesajes = a.pesajes || [];
+  if (!pesajes.length) return 'rojo';
+  var ultimo = pesajes[pesajes.length - 1].fecha;
+  var dias = Math.floor((new Date() - new Date(ultimo)) / 86400000);
+  if (dias <= 30) return 'verde';
+  if (dias <= 90) return 'amarillo';
+  return 'rojo';
+}
+
+// ============ SEGURIDAD COMPLETA ============
+
+// A. CIFRADO DE BACKUP AL EXPORTAR
+async function exportarDatos() {
+  var data = {
+    animales: DB.animales,
+    soportes: DB.soportes,
+    visitas: JSON.parse(localStorage.getItem('gp_visitas') || '[]'),
+    calcHistorial: JSON.parse(localStorage.getItem('gp_calc_hist') || '[]'),
+    exportado: new Date().toISOString(),
+    version: '2.0'
+  };
+
+  var usarCifrado = confirm('¿Exportar backup cifrado?\n\nSí = Backup cifrado con contraseña (más seguro)\nNo = Backup en texto plano (compatible con versiones anteriores)');
+
+  if (usarCifrado) {
+    var pwd = prompt('Crea una contraseña para el backup (mínimo 6 caracteres):');
+    if (!pwd || pwd.length < 6) { alert('Contraseña muy corta. Exportación cancelada.'); return; }
+    var pwd2 = prompt('Confirma la contraseña:');
+    if (pwd !== pwd2) { alert('Las contraseñas no coinciden.'); return; }
+    try {
+      var cifrado = await cifrarDatos(data, pwd);
+      var blob = new Blob([JSON.stringify({ cifrado: true, data: cifrado, v: '2.0' })], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'ganaderia-mangla-' + new Date().toISOString().slice(0,10) + '-cifrado.json';
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+      alert('✅ Backup cifrado descargado. Guarda la contraseña en un lugar seguro — sin ella no podrás restaurar.');
+    } catch(e) {
+      alert('Error al cifrar: ' + e.message);
+    }
+  } else {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'ganaderia-mangla-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+  }
+}
+
+// B. IMPORTAR — SOPORTE PARA BACKUP CIFRADO Y PLANO
+function importarDatos(input) {
+  if (!input.files || !input.files[0]) return;
+  if (!confirm('Esto reemplazará TODOS los datos actuales. ¿Estás seguro?')) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var raw = JSON.parse(e.target.result);
+      if (raw.cifrado && raw.data) {
+        // Backup cifrado
+        var pwd = prompt('Este backup está cifrado. Ingresa la contraseña:');
+        if (!pwd) return;
+        descifrarDatos(raw.data, pwd).then(function(data) {
+          if (!data) { alert('Contraseña incorrecta o backup corrupto.'); return; }
+          _aplicarImportacion(data);
+        }).catch(function(){ alert('Error al descifrar. Contraseña incorrecta.'); });
+      } else {
+        // Backup plano
+        _aplicarImportacion(raw);
+      }
+    } catch(err) {
+      alert('Error al leer el archivo: ' + err.message);
+    }
+  };
+  reader.readAsText(input.files[0]);
+}
+
+function _aplicarImportacion(data) {
+  if (!data || !data.animales) { alert('Archivo no válido — no contiene datos de animales.'); return; }
+  DB.animales = data.animales || [];
+  DB.soportes = data.soportes || [];
+  if (data.visitas) localStorage.setItem('gp_visitas', JSON.stringify(data.visitas));
+  if (data.calcHistorial) localStorage.setItem('gp_calc_hist', JSON.stringify(data.calcHistorial));
+  renderAnimalNav();
+  renderDashboard();
+  alert('✅ Datos importados correctamente. ' + (data.animales ? data.animales.length : 0) + ' animales cargados.');
+}
+
+// C. CIFRADO DE localStorage CON PIN
+var _sessionPin = null;
+var _sessionData = null;
+
+function guardarDatosCifrados(pin) {
+  if (!pin) return;
+  var data = {
+    animales: DB.animales,
+    soportes: DB.soportes
+  };
+  cifrarDatos(data, pin).then(function(cifrado) {
+    if (cifrado) {
+      localStorage.setItem('gp_data_cifrado', cifrado);
+      localStorage.setItem('gp_data_cifrado_v', '1');
+    }
+  }).catch(function(){});
+}
+
+function cargarDatosCifrados(pin) {
+  var cifrado = localStorage.getItem('gp_data_cifrado');
+  if (!cifrado) return false;
+  return descifrarDatos(cifrado, pin).then(function(data) {
+    if (data && data.animales) {
+      DB.animales = data.animales;
+      DB.soportes = data.soportes || [];
+      return true;
+    }
+    return false;
+  }).catch(function(){ return false; });
+}
+
+// Override DB setter to auto-encrypt when PIN is set
+var _dbAnimalesRaw = JSON.parse(localStorage.getItem('gp_animales') || '[]');
+var _dbSoportesRaw = JSON.parse(localStorage.getItem('gp_soportes') || '[]');
+
+// D. TIMEOUT DE SESIÓN — 30 minutos sin actividad
+var _sessionTimer = null;
+var _SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+var _sessionActive = false;
+
+function resetSessionTimer() {
+  if (!_sessionActive) return;
+  clearTimeout(_sessionTimer);
+  _sessionTimer = setTimeout(function() {
+    _sessionActive = false;
+    _sessionPin = null;
+    // Show PIN screen again
+    var pinScreen = document.getElementById('pin-screen');
+    var pinKey = localStorage.getItem('__gp_pin__') || localStorage.getItem('gp_pin');
+    if (pinScreen && pinKey) {
+      pinScreen.style.display = 'flex';
+      document.getElementById('pin-msg').textContent = 'Sesión cerrada por inactividad. Ingresa tu PIN.';
+      document.getElementById('pin-dots').querySelectorAll('div').forEach(function(d){ d.style.background = 'var(--borde)'; });
+    }
+  }, _SESSION_TIMEOUT);
+}
+
+function startSession() {
+  _sessionActive = true;
+  // Listen for user activity
+  ['click','keydown','touchstart','scroll'].forEach(function(evt) {
+    document.addEventListener(evt, resetSessionTimer, { passive: true });
+  });
+  resetSessionTimer();
+}
+
+// Override pinVerificarSeguro to start session and load encrypted data
+var _originalPinVerificar = pinVerificarSeguro;
+function pinVerificarSeguro(inputPin) {
+  var ahora = Date.now();
+  if (ahora < _pinBloqueadoHasta) {
+    var segundos = Math.ceil((_pinBloqueadoHasta - ahora) / 1000);
+    document.getElementById('pin-msg').textContent = '🔒 Bloqueado ' + segundos + 's — demasiados intentos';
+    pinActual = '';
+    if (typeof pinActualizarDots === 'function') pinActualizarDots();
+    return;
+  }
+  var PIN_KEY = '__gp_pin__';
+  var pin = localStorage.getItem(PIN_KEY) || localStorage.getItem('gp_pin');
+  if (!pin) {
+    // First time — create PIN
+    if (inputPin.length < 4) { return; }
+    localStorage.setItem(PIN_KEY, inputPin);
+    _sessionPin = inputPin;
+    _pinIntentos = 0;
+    startSession();
+    document.getElementById('pin-msg').textContent = '✅ PIN configurado';
+    setTimeout(function() {
+      document.getElementById('pin-screen').style.display = 'none';
+      pinActual = '';
+    }, 800);
+    return;
+  }
+  if (inputPin === pin) {
+    _pinIntentos = 0;
+    _sessionPin = inputPin;
+    startSession();
+    document.getElementById('pin-screen').style.display = 'none';
+    pinActual = '';
+    // Try to load encrypted data
+    var cifradoV = localStorage.getItem('gp_data_cifrado_v');
+    if (cifradoV) {
+      cargarDatosCifrados(inputPin).then(function(ok) {
+        if (ok) { renderAnimalNav(); renderDashboard(); }
+      });
+    }
+  } else {
+    _pinIntentos++;
+    pinActual = '';
+    if (typeof pinActualizarDots === 'function') pinActualizarDots();
+    if (_pinIntentos >= 5) {
+      _pinBloqueadoHasta = Date.now() + 30000;
+      document.getElementById('pin-msg').textContent = '🔒 5 intentos fallidos — bloqueado 30s';
+    } else {
+      document.getElementById('pin-msg').textContent = 'PIN incorrecto (' + _pinIntentos + '/5)';
+    }
+    setTimeout(function() {
+      if (document.getElementById('pin-msg'))
+        document.getElementById('pin-msg').textContent = '';
+    }, 2000);
+  }
+}
+
+// Auto-save encrypted on every DB write
+var _dbSaveTimeout = null;
+function triggerEncryptedSave() {
+  if (!_sessionPin) return;
+  clearTimeout(_dbSaveTimeout);
+  _dbSaveTimeout = setTimeout(function() {
+    guardarDatosCifrados(_sessionPin);
+  }, 2000); // debounce 2s
+}
+
+// Patch DB setters to trigger encrypted save
+var _origDBAnimalesSet = Object.getOwnPropertyDescriptor(DB, 'animales') ?
+  Object.getOwnPropertyDescriptor(DB, 'animales').set : null;
+
+// Wrap existing DB object
+(function() {
+  var _anim = DB.animales;
+  var _sop = DB.soportes;
+  Object.defineProperty(DB, 'animales', {
+    get: function(){ return _anim; },
+    set: function(v){ _anim = v; localStorage.setItem('gp_animales', JSON.stringify(v)); triggerEncryptedSave(); },
+    configurable: true
+  });
+  Object.defineProperty(DB, 'soportes', {
+    get: function(){ return _sop; },
+    set: function(v){ _sop = v; localStorage.setItem('gp_soportes', JSON.stringify(v)); triggerEncryptedSave(); },
+    configurable: true
+  });
+})();
 
 // ============ INIT ============
 function init() {
