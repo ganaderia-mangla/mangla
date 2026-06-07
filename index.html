@@ -1475,32 +1475,35 @@ function renderFicha(id) {
   var madre = a.madre ? DB.animales.find(function(x){ return x.chapeta === a.madre; }) : null;
   var crias = DB.animales.filter(function(x){ return x.madre === a.chapeta; });
   var periodos = a.periodos || [];
+  var fincaNombre = a.finca || 'Socio finca';
+  var pctInversor = a.pctInversor || 50;
+  var pctSocioGlobal = 100 - pctInversor;
 
-  // Build evolution timeline
+  // ─── 1. EVOLUCIÓN POR PERÍODOS ────────────────────────────────────────────
   var allPeriodos = [];
   periodos.forEach(function(pc, i) {
     allPeriodos.push({
-      num: i+1, tipo:'cerrado',
+      num: i + 1, tipo: 'cerrado',
       baseInversion: pc.baseInversionPeriodo,
-      basePeso: i===0 ? a.pesoInicial : periodos[i-1].pesoCorte,
+      basePeso: i === 0 ? a.pesoInicial : periodos[i - 1].pesoCorte,
       pesoFin: pc.pesoCorte, valorFin: pc.valorCorte,
       utilidad: pc.utilidadTotal, utilSocio: pc.utilidadSocio,
       utilInversor: pc.utilidadInversor, fechaFin: pc.fechaCorte,
-      pct: a.pctInversor||50, formaPago: pc.socioFormaPago||pc.formaPago||'efectivo',
-      nuevaBase: pc.valorCorte // Modelo A: P(n+1) arranca desde valor de mercado al cierre
+      pct: pctInversor, formaPago: pc.socioFormaPago || pc.formaPago || 'efectivo',
+      nuevaBase: pc.valorCorte
     });
   });
   allPeriodos.push({
-    num: nPeriodo, tipo:'activo',
+    num: nPeriodo, tipo: 'activo',
     baseInversion: p.baseInversion, basePeso: p.basePeso,
-    pesoAct: pesoAct, pct: a.pctInversor||50
+    pesoAct: pesoAct, pct: pctInversor
   });
 
   var evolucionHtml = allPeriodos.map(function(per) {
     if (per.tipo === 'cerrado') {
       var pctSocio = 100 - per.pct;
       var colorUtil = per.utilidad >= 0 ? 'var(--verde)' : 'var(--rojo)';
-      var rentStr = per.baseInversion > 0 ? ((per.utilidad/per.baseInversion)*100).toFixed(1)+'%' : '0%';
+      var rentStr = per.baseInversion > 0 ? ((per.utilidad / per.baseInversion) * 100).toFixed(1) + '%' : '0%';
       return (
         '<div style="border:0.5px solid var(--borde);border-radius:var(--r);overflow:hidden;margin-bottom:12px">' +
           '<div style="background:var(--crema-dark);padding:10px 14px;display:flex;justify-content:space-between;align-items:center">' +
@@ -1532,20 +1535,19 @@ function renderFicha(id) {
                 '<div style="font-size:11px;color:var(--azul)">Reinvertido</div>' +
               '</div>' +
               '<div style="background:#FFF8E1;border-radius:var(--r-sm);padding:8px">' +
-                '<div style="font-size:10px;color:var(--amber-dark);margin-bottom:2px">' + (a.finca||'Socio finca') + ' (' + pctSocio + '%)</div>' +
-                '<div style="font-size:14px;font-weight:500;color:var(--amber-dark)">' + fmt$(Math.max(0,per.utilSocio)) + '</div>' +
+                '<div style="font-size:10px;color:var(--amber-dark);margin-bottom:2px">' + fincaNombre + ' (' + pctSocio + '%)</div>' +
+                '<div style="font-size:14px;font-weight:500;color:var(--amber-dark)">' + fmt$(Math.max(0, per.utilSocio)) + '</div>' +
                 '<div style="font-size:11px;color:var(--amber-dark)">Pagado en ' + per.formaPago + '</div>' +
               '</div>' +
             '</div>' +
             '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--verde-pale);padding:8px 12px;border-radius:var(--r-sm)">' +
-              '<span style="font-size:12px;color:var(--verde);font-weight:500">Período ' + (per.num+1) + ' arranca desde: <strong>' + fmt$(per.nuevaBase) + '</strong> — valor real del animal</span>' +
-              '<button data-pidx="' + (per.num-1) + '" data-aid="' + a.id + '" onclick="editarPeriodo(this.getAttribute(\'data-aid\'), parseInt(this.getAttribute(\'data-pidx\')))" style="font-size:12px;color:var(--verde);background:none;border:none;cursor:pointer">✏️ Editar</button>' +
+              '<span style="font-size:12px;color:var(--verde);font-weight:500">Período ' + (per.num + 1) + ' arranca desde: <strong>' + fmt$(per.nuevaBase) + '</strong> — valor real del animal</span>' +
+              '<button data-pidx="' + (per.num - 1) + '" data-aid="' + a.id + '" onclick="editarPeriodo(this.getAttribute(\'data-aid\'), parseInt(this.getAttribute(\'data-pidx\')))" style="font-size:12px;color:var(--verde);background:none;border:none;cursor:pointer">✏️ Editar</button>' +
             '</div>' +
           '</div>' +
         '</div>'
       );
     } else {
-      // Período activo
       var ganActiva = pesoAct - per.basePeso;
       var ganColor = ganActiva >= 0 ? 'var(--verde)' : 'var(--rojo)';
       return (
@@ -1568,7 +1570,7 @@ function renderFicha(id) {
               '</div>' +
             '</div>' +
             '<div style="font-size:12px;color:var(--texto-med);background:var(--crema);padding:8px 10px;border-radius:var(--r-sm)">' +
-              'Al liquidar: 50% Andrés A. reinvierte · 50% ' + (a.finca||'Socio finca') + ' en efectivo' +
+              'Al liquidar: ' + per.pct + '% Andrés A. reinvierte · ' + (100 - per.pct) + '% ' + fincaNombre + ' en efectivo' +
             '</div>' +
           '</div>' +
         '</div>'
@@ -1576,161 +1578,234 @@ function renderFicha(id) {
     }
   }).join('');
 
-  // Trazabilidad section
-  var trazHtml = '';
-  if (periodos.length) {
-    var totalGan = 0, totalAndres = 0, totalCamp = 0;
-    periodos.forEach(function(pc){ totalGan += pc.utilidadTotal||0; totalAndres += pc.utilidadInversor||0; totalCamp += pc.utilidadSocio||0; });
-    var trazRows = periodos.map(function(pc, i){
-      var gan = pc.utilidadTotal||0;
-      var gc = gan >= 0 ? 'color:var(--verde)' : 'color:var(--rojo)';
-      return '<tr style="border-bottom:1px solid var(--borde)">' +
-        '<td style="padding:7px 10px;font-size:12px">P' + (i+1) + ' <span style="color:var(--texto-light)">' + pc.fechaCorte + '</span></td>' +
-        '<td style="padding:7px 10px;font-size:12px;text-align:right">' + fmt$(pc.baseInversionPeriodo) + '</td>' +
-        '<td style="padding:7px 10px;font-size:12px;text-align:right;font-weight:500">' + fmt$(pc.valorCorte) + '</td>' +
-        '<td style="padding:7px 10px;font-size:12px;text-align:right;' + gc + ';font-weight:500">' + fmt$(gan) + '</td>' +
-        '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--azul);font-weight:500">' + fmt$(pc.utilidadInversor||0) + '</td>' +
-        '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--amber-dark);font-weight:500">' + fmt$(pc.utilidadSocio||0) + ' ef.</td>' +
-      '</tr>';
-    }).join('');
-    trazHtml =
-      '<div class="card" style="margin-top:14px;border-top:3px solid var(--verde-claro);border-radius:0 0 var(--r) var(--r)">' +
-        '<p style="font-size:13px;font-weight:500;margin:0 0 12px">Trazabilidad de la negociación</p>' +
-        '<div style="overflow-x:auto">' +
-          '<table style="width:100%;border-collapse:collapse">' +
-            '<thead><tr style="background:var(--crema)">' +
-              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:left">Período</th>' +
-              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Base</th>' +
-              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Cierre</th>' +
-              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Ganancia</th>' +
-              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--azul);text-align:right">Andrés A.</th>' +
-              '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--amber-dark);text-align:right">' + (a.finca||'Socio') + '</th>' +
-            '</tr></thead>' +
-            '<tbody>' + trazRows +
-              '<tr style="background:var(--crema)">' +
-                '<td style="padding:7px 10px;font-size:12px;font-weight:500" colspan="3">Totales</td>' +
-                '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--verde)">' + fmt$(totalGan) + '</td>' +
-                '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--azul)">' + fmt$(totalAndres) + '</td>' +
-                '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--amber-dark)">' + fmt$(totalCamp) + '</td>' +
-              '</tr>' +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-        '<div style="margin-top:10px;padding:8px 12px;background:var(--verde-pale);border-radius:var(--r-sm);font-size:12px;color:var(--verde)">' +
-          'P' + (periodos.length+1) + ' en curso desde <strong>' + fmt$(p.baseInversion) + '</strong> · ' + fmtKg(p.basePeso) +
-        '</div>' +
+  // ─── 2. TRAZABILIDAD ──────────────────────────────────────────────────────
+  // ─── 2. TRAZABILIDAD — siempre visible, incluye período activo ────────────
+  var totalGan = 0, totalAndres = 0, totalCamp = 0;
+  periodos.forEach(function(pc) {
+    totalGan += pc.utilidadTotal || 0;
+    totalAndres += pc.utilidadInversor || 0;
+    totalCamp += pc.utilidadSocio || 0;
+  });
+  var trazRows = periodos.map(function(pc, i) {
+    var gan = pc.utilidadTotal || 0;
+    var gc = gan >= 0 ? 'color:var(--verde)' : 'color:var(--rojo)';
+    return '<tr style="border-bottom:1px solid var(--borde)">' +
+      '<td style="padding:7px 10px;font-size:12px">P' + (i + 1) + ' <span style="color:var(--texto-light)">' + pc.fechaCorte + '</span></td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right">' + fmt$(pc.baseInversionPeriodo) + '</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;font-weight:500">' + fmt$(pc.valorCorte) + '</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;' + gc + ';font-weight:500">' + fmt$(gan) + '</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--azul);font-weight:500">' + fmt$(pc.utilidadInversor || 0) + '</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--amber-dark);font-weight:500">' + fmt$(pc.utilidadSocio || 0) + ' ef.</td>' +
+    '</tr>';
+  }).join('');
+
+  // Fila período activo siempre al final
+  trazRows +=
+    '<tr style="background:var(--verde-pale)">' +
+      '<td style="padding:7px 10px;font-size:12px;color:var(--verde);font-weight:500">P' + nPeriodo + ' <span style="font-weight:400;font-size:11px">· En curso</span></td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--verde);font-weight:500">' + fmt$(p.baseInversion) + '</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--texto-light)">—</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--texto-light)">—</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--texto-light)">—</td>' +
+      '<td style="padding:7px 10px;font-size:12px;text-align:right;color:var(--texto-light)">—</td>' +
+    '</tr>';
+
+  var filaTotales = periodos.length
+    ? '<tr style="background:var(--crema)">' +
+        '<td style="padding:7px 10px;font-size:12px;font-weight:500" colspan="3">Totales</td>' +
+        '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--verde)">' + fmt$(totalGan) + '</td>' +
+        '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--azul)">' + fmt$(totalAndres) + '</td>' +
+        '<td style="padding:7px 10px;font-size:12px;font-weight:500;text-align:right;color:var(--amber-dark)">' + fmt$(totalCamp) + '</td>' +
+      '</tr>'
+    : '';
+
+  var trazHtml =
+    '<div class="card" style="margin-top:14px;border-top:3px solid var(--verde-claro)">' +
+      '<p style="font-size:13px;font-weight:500;margin:0 0 12px">Trazabilidad de la negociación</p>' +
+      '<div style="overflow-x:auto">' +
+        '<table style="width:100%;border-collapse:collapse">' +
+          '<thead><tr style="background:var(--crema)">' +
+            '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:left">Período</th>' +
+            '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Base</th>' +
+            '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Cierre</th>' +
+            '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--texto-light);text-align:right">Ganancia</th>' +
+            '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--azul);text-align:right">Andrés A.</th>' +
+            '<th style="padding:7px 10px;font-size:11px;font-weight:500;color:var(--amber-dark);text-align:right">' + fincaNombre + '</th>' +
+          '</tr></thead>' +
+          '<tbody>' + trazRows + filaTotales + '</tbody>' +
+        '</table>' +
+      '</div>' +
+      '<div style="margin-top:10px;padding:8px 12px;background:var(--verde-pale);border-radius:var(--r-sm);font-size:12px;color:var(--verde)">' +
+        'P' + nPeriodo + ' en curso desde <strong>' + fmt$(p.baseInversion) + '</strong> · ' + fmtKg(p.basePeso) +
+      '</div>' +
+    '</div>';
+
+  // ─── 3. GASTOS ────────────────────────────────────────────────────────────
+  var gastosHtml = '';
+  if (a.gastos && a.gastos.length) {
+    var totalGastos = a.gastos.reduce(function(s, g) { return s + g.monto; }, 0);
+    gastosHtml =
+      '<div class="card" style="margin-top:14px">' +
+        '<p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Gastos adicionales</p>' +
+        '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
+        a.gastos.map(function(g) {
+          return '<tr>' +
+            '<td style="padding:6px 0;border-bottom:1px solid var(--borde);color:var(--texto-light)">' + g.fecha + '</td>' +
+            '<td style="padding:6px 8px;border-bottom:1px solid var(--borde)">' + g.concepto + (g.detalle ? ' — ' + g.detalle : '') + '</td>' +
+            '<td style="padding:6px 0;border-bottom:1px solid var(--borde);text-align:right;font-weight:500;color:var(--rojo)">' + fmt$(g.monto) + '</td>' +
+          '</tr>';
+        }).join('') +
+        '<tr><td colspan="2" style="padding:8px 0;font-weight:500">Total</td><td style="padding:8px 0;text-align:right;font-weight:500;color:var(--rojo)">' + fmt$(totalGastos) + '</td></tr>' +
+        '</table>' +
       '</div>';
   }
 
-  // Gastos
-  var gastosHtml = '';
-  if (a.gastos && a.gastos.length) {
-    var totalGastos = a.gastos.reduce(function(s,g){ return s+g.monto; },0);
-    gastosHtml = '<div class="card"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Gastos adicionales</p>' +
-      '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
-      a.gastos.map(function(g){ return '<tr><td style="padding:6px 0;border-bottom:1px solid var(--borde);color:var(--texto-light)">' + g.fecha + '</td><td style="padding:6px 8px;border-bottom:1px solid var(--borde)">' + g.concepto + (g.detalle?' — '+g.detalle:'') + '</td><td style="padding:6px 0;border-bottom:1px solid var(--borde);text-align:right;font-weight:500;color:var(--rojo)">' + fmt$(g.monto) + '</td></tr>'; }).join('') +
-      '<tr><td colspan="2" style="padding:8px 0;font-weight:500">Total</td><td style="padding:8px 0;text-align:right;font-weight:500;color:var(--rojo)">' + fmt$(totalGastos) + '</td></tr></table></div>';
-  }
-
-  // Crías
+  // ─── 4. CRÍAS ─────────────────────────────────────────────────────────────
   var criasHtml = '';
   if (crias.length) {
-    criasHtml = '<div class="card"><p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Crías (' + crias.length + ')</p>' +
-      crias.map(function(c){ return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--borde);font-size:13px" id="cria-row-' + c.id + '"><span>' + (c.nombre||c.chapeta) + ' <span class="badge badge-gray">#' + c.chapeta + '</span></span><button class="btn btn-secondary btn-sm" id="btn-ver-cria-' + c.id + '">Ver →</button></div>'; }).join('') +
-    '</div>';
+    criasHtml =
+      '<div class="card" style="margin-top:14px">' +
+        '<p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Crías (' + crias.length + ')</p>' +
+        crias.map(function(c) {
+          return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--borde);font-size:13px" id="cria-row-' + c.id + '">' +
+            '<span>' + (c.nombre || c.chapeta) + ' <span class="badge badge-gray">#' + c.chapeta + '</span></span>' +
+            '<button class="btn btn-secondary btn-sm" id="btn-ver-cria-' + c.id + '">Ver →</button>' +
+          '</div>';
+        }).join('') +
+      '</div>';
   }
 
-
+  // ─── 5. CONSTRUIR HTML COMPLETO ───────────────────────────────────────────
   var fichaHtml = '';
+
+  // Botón volver
   fichaHtml += renderBotonVolver('← Dashboard', 'dashboard');
-  fichaHtml += '<div style="display:flex;gap:5px;align-items:center;margin-bottom:12px;overflow-x:auto;padding-bottom:2px" id="ficha-btns-' + id + '">' +
-    '<button class="btn btn-secondary btn-sm" id="btn-editar-' + id + '" style="white-space:nowrap">✏️ Editar</button>' +
-    '<button class="btn btn-secondary btn-sm" id="btn-compartir-' + id + '" style="white-space:nowrap">📤 PDF</button>' +
-    '<button class="btn btn-secondary btn-sm" id="btn-pesajes-' + id + '" style="white-space:nowrap">⚖️ Pesajes</button>' +
-    '<button class="btn btn-secondary btn-sm" id="btn-gasto-' + id + '" style="white-space:nowrap">💊 Gasto</button>' +
-    '<button class="btn btn-secondary btn-sm" id="btn-soporte-' + id + '" style="white-space:nowrap">📎 Soporte</button>' +
-    (a.madre ? '<button class="btn btn-secondary btn-sm" id="btn-promover-' + id + '" style="white-space:nowrap">⬆️ Promover</button>' : '') +
-    '<button class="btn btn-secondary btn-sm" id="btn-baja-' + id + '" style="white-space:nowrap;background:#fff3e0;color:#e65100;border-color:#ffcc80">💀 Baja</button>' +
-    '<button class="btn btn-secondary btn-sm" id="btn-eliminar-' + id + '" style="white-space:nowrap;background:var(--rojo-pale);color:var(--rojo);border-color:#ffc9ca">🗑️ Eliminar</button>' +
-    '<button class="btn btn-danger btn-sm" id="btn-liquidar-' + id + '" style="white-space:nowrap">💰 Liquidar</button>' +
-  '</div>';;
+
+  // BARRA DE BOTONES (una línea, scroll horizontal)
   fichaHtml +=
-    '<div class="card" style="margin-bottom:16px">' +
-      '<div style="display:flex;gap:20px;align-items:flex-start">' +
-        // Photo 150px
+    '<div style="display:flex;gap:5px;align-items:center;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch" id="ficha-btns-' + id + '">' +
+      '<button class="btn btn-secondary btn-sm" id="btn-editar-' + id + '" style="white-space:nowrap;flex-shrink:0">✏️ Editar</button>' +
+      '<button class="btn btn-secondary btn-sm" id="btn-compartir-' + id + '" style="white-space:nowrap;flex-shrink:0">📤 PDF</button>' +
+      '<button class="btn btn-secondary btn-sm" id="btn-pesajes-' + id + '" style="white-space:nowrap;flex-shrink:0">⚖️ Pesajes</button>' +
+      '<button class="btn btn-secondary btn-sm" id="btn-gasto-' + id + '" style="white-space:nowrap;flex-shrink:0">💊 Gasto</button>' +
+      '<button class="btn btn-secondary btn-sm" id="btn-soporte-' + id + '" style="white-space:nowrap;flex-shrink:0">📎 Soporte</button>' +
+      (a.madre ? '<button class="btn btn-secondary btn-sm" id="btn-promover-' + id + '" style="white-space:nowrap;flex-shrink:0">⬆️ Promover</button>' : '') +
+      '<button class="btn btn-secondary btn-sm" id="btn-baja-' + id + '" style="white-space:nowrap;flex-shrink:0;background:#fff3e0;color:#e65100;border-color:#ffcc80">💀 Baja</button>' +
+      '<button class="btn btn-secondary btn-sm" id="btn-eliminar-' + id + '" style="white-space:nowrap;flex-shrink:0;background:var(--rojo-pale);color:var(--rojo);border-color:#ffc9ca">🗑️ Eliminar</button>' +
+      '<button class="btn btn-danger btn-sm" id="btn-liquidar-' + id + '" style="white-space:nowrap;flex-shrink:0">💰 Liquidar</button>' +
+    '</div>';
+
+  // CARD IDENTIFICACIÓN (foto + datos + métricas + observaciones)
+  fichaHtml +=
+    '<div class="card" style="margin-bottom:14px">' +
+
+      // Foto + nombre + datos
+      '<div style="display:flex;gap:16px;align-items:flex-start">' +
+
+        // Foto de perfil
         '<div style="position:relative;flex-shrink:0">' +
-          (a.fotoPerfil ?
-            '<img src="' + a.fotoPerfil + '" style="width:160px;height:160px;object-fit:cover;border-radius:var(--r);border:2px solid var(--verde-claro)">' :
-            '<div style="width:160px;height:160px;border-radius:var(--r);background:var(--verde-pale);border:2px solid var(--verde-claro);display:flex;align-items:center;justify-content:center;font-size:58px">🐄</div>'
+          (a.fotoPerfil
+            ? '<img src="' + a.fotoPerfil + '" style="width:160px;height:160px;object-fit:cover;border-radius:var(--r);border:2px solid var(--verde-claro)">'
+            : '<div style="width:160px;height:160px;border-radius:var(--r);background:var(--verde-pale);border:2px solid var(--verde-claro);display:flex;align-items:center;justify-content:center;font-size:54px">🐄</div>'
           ) +
           '<button id="btn-foto-perfil-' + id + '" style="position:absolute;bottom:6px;right:6px;background:var(--verde);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Cambiar foto de perfil">' +
             '<svg width="13" height="13" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
           '</button>' +
         '</div>' +
-        // Name + subtitle + data
+
+        // Nombre + subtítulo + tabla de datos
         '<div style="flex:1;min-width:0">' +
-          '<h1 style="font-size:20px;font-weight:500;margin:0 0 4px;color:var(--texto)">' + (a.nombre||'Sin nombre') + ' <span style="font-size:14px;color:var(--texto-light);font-weight:400">#' + a.chapeta + '</span></h1>' +
-          '<p style="font-size:13px;color:var(--texto-med);margin:0 0 12px">' + a.proposito + ' · ' + a.sexo + ' · ' + (a.finca||'') + ' <span class="periodo-tag" style="margin-left:6px">P' + nPeriodo + '</span></p>' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 24px">' +
-          '<div>' +
-            row('Chapeta', '#' + a.chapeta) +
-            row('Nombre', a.nombre||'—') +
-            row('Sexo', a.sexo) +
-            row('Propósito', a.proposito) +
-          '</div>' +
-          '<div>' +
-            row('Finca', a.finca||'—') +
-            row('Color', a.color||'—') +
-            row('Fecha compra', a.fechaCompra) +
-            (a.fechaNac ? row('Nacimiento', a.fechaNac) : '') +
-            (madre ? row('Madre', '#' + a.madre + (madre.nombre ? ' ' + madre.nombre : '')) : '') +
-            row('Inversionista', (a.inversor||'—') + ' · ' + (a.pctInversor||50) + '%') +
-          ((a.flete || a.comision) ? row('Costos adquisición', (a.flete ? 'Flete ' + fmt$(a.flete) : '') + (a.flete && a.comision ? ' · ' : '') + (a.comision ? 'Comisión ' + fmt$(a.comision) : '')) : '') +
+          '<h1 style="font-size:20px;font-weight:600;margin:0 0 3px;color:var(--texto)">' +
+            (a.nombre || 'Sin nombre') +
+            ' <span style="font-size:14px;color:var(--texto-light);font-weight:400">#' + a.chapeta + '</span>' +
+          '</h1>' +
+          '<p style="font-size:13px;color:var(--texto-med);margin:0 0 12px">' +
+            a.proposito + ' · ' + a.sexo + ' · ' + (a.finca || '') +
+            ' <span class="periodo-tag" style="margin-left:6px">P' + nPeriodo + '</span>' +
+          '</p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">' +
+            '<div>' +
+              row('Color', a.color || '—') +
+              row('Fecha compra', a.fechaCompra) +
+              (a.fechaNac ? row('Nacimiento', a.fechaNac) : '') +
+              (madre ? row('Madre', '#' + a.madre + (madre.nombre ? ' ' + madre.nombre : '')) : '') +
+              ((a.flete || a.comision) ? row('Costos', (a.flete ? 'Flete ' + fmt$(a.flete) : '') + (a.flete && a.comision ? ' · ' : '') + (a.comision ? 'Comisión ' + fmt$(a.comision) : '')) : '') +
+            '</div>' +
+            '<div>' +
+              row('Finca', a.finca || '—') +
+              row('Propósito', a.proposito) +
+              row('Inversionista', (a.inversor || '—') + ' · ' + pctInversor + '%') +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
-      // Metrics row
+
+      // 5 MÉTRICAS en fila
       '<div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--borde);flex-wrap:wrap">' +
-        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso inicial</div><div style="font-size:16px;font-weight:500">' + fmtKg(a.pesoInicial) + '</div></div>' +
-        '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso actual</div><div style="font-size:16px;font-weight:500;color:var(--verde)">' + fmtKg(pesoAct) + '</div></div>' +
-        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Ganancia vs base</div><div style="font-size:16px;font-weight:500;color:' + (gananciaVsBase>=0?'var(--verde)':'var(--rojo)') + '">' + ganStr + '</div></div>' +
-        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Base inversión</div><div style="font-size:16px;font-weight:500">' + fmt$(p.baseInversion) + '</div></div>' +
-        '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:10px;flex:1;min-width:100px"><div style="font-size:10px;color:var(--azul);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Período</div><div style="font-size:16px;font-weight:500;color:var(--azul)">' + nPeriodo + '</div></div>' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:90px">' +
+          '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso inicial</div>' +
+          '<div style="font-size:16px;font-weight:500">' + fmtKg(a.pesoInicial) + '</div>' +
+        '</div>' +
+        '<div style="background:var(--verde-pale);border-radius:var(--r-sm);padding:10px;flex:1;min-width:90px">' +
+          '<div style="font-size:10px;color:var(--verde);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Peso actual</div>' +
+          '<div style="font-size:16px;font-weight:500;color:var(--verde)">' + fmtKg(pesoAct) + '</div>' +
+        '</div>' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:90px">' +
+          '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Ganancia vs base</div>' +
+          '<div style="font-size:16px;font-weight:500;color:' + (gananciaVsBase >= 0 ? 'var(--verde)' : 'var(--rojo)') + '">' + ganStr + '</div>' +
+        '</div>' +
+        '<div style="background:var(--crema);border-radius:var(--r-sm);padding:10px;flex:1;min-width:90px">' +
+          '<div style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Base inversión</div>' +
+          '<div style="font-size:16px;font-weight:500">' + fmt$(p.baseInversion) + '</div>' +
+        '</div>' +
+        '<div style="background:var(--azul-pale);border-radius:var(--r-sm);padding:10px;flex:1;min-width:90px">' +
+          '<div style="font-size:10px;color:var(--azul);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Período</div>' +
+          '<div style="font-size:16px;font-weight:500;color:var(--azul)">' + nPeriodo + '</div>' +
+        '</div>' +
       '</div>' +
-      // Observations at bottom
-      (a.obs ?
-        '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)">' +
-          '<p style="font-size:11px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px">Observaciones</p>' +
-          '<p style="font-size:13px;color:var(--texto);margin:0">' + a.obs + '</p>' +
-        '</div>' : '') +
+
+      // OBSERVACIONES (si las hay)
+      (a.obs
+        ? '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)">' +
+            '<p style="font-size:10px;color:var(--texto-light);text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px">Observaciones</p>' +
+            '<p style="font-size:13px;color:var(--texto);margin:0">' + a.obs + '</p>' +
+          '</div>'
+        : '') +
+
     '</div>';
 
+  // EVOLUCIÓN POR PERÍODOS
   fichaHtml +=
-    '<div class="card">' +
+    '<div class="card" style="margin-bottom:14px">' +
       '<p style="font-size:13px;font-weight:500;margin-bottom:16px">Evolución por períodos</p>' +
       evolucionHtml +
     '</div>';
+
+  // TRAZABILIDAD
   fichaHtml += trazHtml;
 
-      gastosHtml +
-    criasHtml +
+  // GASTOS
+  fichaHtml += gastosHtml;
+
+  // CRÍAS
+  fichaHtml += criasHtml;
+
+  // DRIVE INFO
+  fichaHtml +=
     '<div class="alert alert-info" style="font-size:12px;margin-top:14px">' +
       '📁 Carpeta Drive: <strong>' + a.chapeta + (a.nombre ? ' - ' + a.nombre : '') + '</strong> → Fotos / Liquidación' +
     '</div>';
 
+  // ─── 6. RENDERIZAR Y CONECTAR EVENTOS ─────────────────────────────────────
   document.getElementById('ficha-contenido').innerHTML = fichaHtml;
 
-  // Attach button events after DOM render
+  // ── Botón Editar
   var btnEditar = document.getElementById('btn-editar-' + id);
-  var btnCompartir = document.getElementById('btn-compartir-' + id);
-  var btnPesajes = document.getElementById('btn-pesajes-' + id);
-  var btnGasto = document.getElementById('btn-gasto-' + id);
-  var btnEliminar = document.getElementById('btn-eliminar-' + id);
-  var btnLiquidar = document.getElementById('btn-liquidar-' + id);
+  if (btnEditar) btnEditar.addEventListener('click', function() { abrirEditar(id); });
 
-  if (btnEditar) btnEditar.addEventListener('click', function(){ abrirEditar(id); });
-  if (btnCompartir) btnCompartir.addEventListener('click', function(){
-    // Show share options
+  // ── Botón PDF / Compartir (menú desplegable)
+  var btnCompartir = document.getElementById('btn-compartir-' + id);
+  if (btnCompartir) btnCompartir.addEventListener('click', function() {
     var menu = document.getElementById('share-menu-' + id);
     if (menu) { menu.style.display = menu.style.display === 'none' ? 'block' : 'none'; return; }
     var m = document.createElement('div');
@@ -1741,33 +1816,52 @@ function renderFicha(id) {
       '<button onclick="compartirWhatsAppAnimal(\'' + id + '\')" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif;border-top:1px solid var(--borde)">📲 Compartir por WhatsApp</button>';
     document.getElementById('ficha-btns-' + id).style.position = 'relative';
     document.getElementById('ficha-btns-' + id).appendChild(m);
-    // Close on outside click
-    setTimeout(function(){
-      document.addEventListener('click', function closeMenu(e){
+    setTimeout(function() {
+      document.addEventListener('click', function closeMenu(e) {
         if (!m.contains(e.target)) { m.remove(); document.removeEventListener('click', closeMenu); }
       });
     }, 100);
   });
-  if (btnPesajes) btnPesajes.addEventListener('click', function(){ showPage('pesajes', id); });
-  if (btnGasto) btnGasto.addEventListener('click', function(){ abrirGasto(id); });
-  var btnSoporte = document.getElementById('btn-soporte-' + id);
-  if (btnSoporte) btnSoporte.addEventListener('click', function(){ abrirSoporteAnimal(id); });
-  if (btnEliminar) btnEliminar.addEventListener('click', function(){ eliminarAnimal(id); });
-  if (btnLiquidar) btnLiquidar.addEventListener('click', function(){ irAVender(id); });
-  var btnBaja = document.getElementById('btn-baja-' + id);
-  if (btnBaja) btnBaja.addEventListener('click', function(){ registrarBaja(id); });
-  var btnPromover = document.getElementById('btn-promover-' + id);
-  if (btnPromover) btnPromover.addEventListener('click', function(){ abrirPromover(id); });
-  var btnFotoPerfil = document.getElementById('btn-foto-perfil-' + id);
-  if (btnFotoPerfil) btnFotoPerfil.addEventListener('click', function(){ cambiarFotoPerfil(id); });
 
-  // Attach cria buttons
+  // ── Botón Pesajes
+  var btnPesajes = document.getElementById('btn-pesajes-' + id);
+  if (btnPesajes) btnPesajes.addEventListener('click', function() { showPage('pesajes', id); });
+
+  // ── Botón Gasto
+  var btnGasto = document.getElementById('btn-gasto-' + id);
+  if (btnGasto) btnGasto.addEventListener('click', function() { abrirGasto(id); });
+
+  // ── Botón Soporte
+  var btnSoporte = document.getElementById('btn-soporte-' + id);
+  if (btnSoporte) btnSoporte.addEventListener('click', function() { abrirSoporteAnimal(id); });
+
+  // ── Botón Promover (solo si tiene madre)
+  var btnPromover = document.getElementById('btn-promover-' + id);
+  if (btnPromover) btnPromover.addEventListener('click', function() { abrirPromover(id); });
+
+  // ── Botón Baja
+  var btnBaja = document.getElementById('btn-baja-' + id);
+  if (btnBaja) btnBaja.addEventListener('click', function() { registrarBaja(id); });
+
+  // ── Botón Eliminar
+  var btnEliminar = document.getElementById('btn-eliminar-' + id);
+  if (btnEliminar) btnEliminar.addEventListener('click', function() { eliminarAnimal(id); });
+
+  // ── Botón Liquidar
+  var btnLiquidar = document.getElementById('btn-liquidar-' + id);
+  if (btnLiquidar) btnLiquidar.addEventListener('click', function() { irAVender(id); });
+
+  // ── Botón cambiar foto de perfil
+  var btnFotoPerfil = document.getElementById('btn-foto-perfil-' + id);
+  if (btnFotoPerfil) btnFotoPerfil.addEventListener('click', function() { cambiarFotoPerfil(id); });
+
+  // ── Botones Ver cría
   crias.forEach(function(c) {
     var btn = document.getElementById('btn-ver-cria-' + c.id);
-    if (btn) btn.addEventListener('click', function(){ showPage('ficha', c.id); });
+    if (btn) btn.addEventListener('click', function() { showPage('ficha', c.id); });
   });
 
-  // Render persistent photos
+  // ── Fotos del animal (sección persistente)
   var fotosHtml = renderFichaFotos(a);
   if (fotosHtml) {
     var fotosDiv = document.createElement('div');
@@ -1775,7 +1869,7 @@ function renderFicha(id) {
     document.getElementById('ficha-contenido').appendChild(fotosDiv.firstElementChild);
   }
 
-  // Render soportes del animal
+  // ── Soportes de pago
   var soportesHtml = renderSoportesAnimal(id);
   if (soportesHtml) {
     var soportesDiv = document.createElement('div');
@@ -1783,14 +1877,15 @@ function renderFicha(id) {
     document.getElementById('ficha-contenido').appendChild(soportesDiv.firstElementChild);
   }
 
-  // Wire up nuevo soporte button
+  // ── Botón nuevo soporte (dentro de la card de soportes)
   var btnNuevoSoporte = document.getElementById('btn-nuevo-soporte-' + id);
-  if (btnNuevoSoporte) btnNuevoSoporte.addEventListener('click', function(){ abrirSoporteAnimal(id); });
+  if (btnNuevoSoporte) btnNuevoSoporte.addEventListener('click', function() { abrirSoporteAnimal(id); });
 }
 
 function row(label, val) {
-  return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--borde);font-size:13px"><span style="color:var(--texto-med)">${label}</span><span style="font-weight:500">${val}</span></div>`;
+  return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--borde);font-size:13px"><span style="color:var(--texto-med)">' + label + '</span><span style="font-weight:500">' + val + '</span></div>';
 }
+
 
 // ============ PESAJES ============
 function renderPesajes(id) {
